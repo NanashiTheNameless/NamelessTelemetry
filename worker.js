@@ -6,192 +6,190 @@
 // - GET /: serve a simple index HTML with recent counts per project.
 // - GET /api/stats: return JSON summary for recent days.
 
-const DAYS_TO_SHOW = 7; // default if no range provided
+const DAYS_TO_SHOW = 7 // default if no range provided
 // Projects to ignore entirely (case-insensitive)
 const PROJECT_DENYLIST = new Set(
   [
     'Project',
     'ExampleProject',
-    '<PROJECT_NAME>',
+    '<PROJECT_NAME>'
   ].map((s) => String(s).toLowerCase())
-);
+)
 
-function parseRangeDays(searchParams) {
-  const range = (searchParams.get('range') || '').toLowerCase();
-  const map = { '7d': 7, '30d': 30, '90d': 90, '180d': 180, '365d': 365, '1y': 365 };
-  if (map[range]) return map[range];
-  const daysParam = parseInt(searchParams.get('days') || '', 10);
-  if (Number.isFinite(daysParam) && daysParam >= 7 && daysParam <= 365) return daysParam;
-  return DAYS_TO_SHOW;
+function parseRangeDays (searchParams) {
+  const range = (searchParams.get('range') || '').toLowerCase()
+  const map = { '7d': 7, '30d': 30, '90d': 90, '180d': 180, '365d': 365, '1y': 365 }
+  if (map[range]) return map[range]
+  const daysParam = parseInt(searchParams.get('days') || '', 10)
+  if (Number.isFinite(daysParam) && daysParam >= 7 && daysParam <= 365) return daysParam
+  return DAYS_TO_SHOW
 }
 
 export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
+  async fetch (request, env, ctx) {
+    const url = new URL(request.url)
     try {
       // Best-effort background cleanup of old count keys (runs at most once per day)
       if (env && env.TELEMETRY && ctx && typeof ctx.waitUntil === 'function') {
-        ctx.waitUntil(maybeCleanupOldCounts(env));
+        ctx.waitUntil(maybeCleanupOldCounts(env))
       }
       if (request.method === 'POST' && url.pathname === '/census') {
-        return await handleCensus(request, env);
+        return await handleCensus(request, env)
       }
       if (request.method === 'GET' && url.pathname === '/api/stats') {
-          const projectFilter = url.searchParams.get('project') || undefined;
-          const days = parseRangeDays(url.searchParams);
-          const json = await buildStats(env, projectFilter, days);
-        return jsonResponse(json);
+        const projectFilter = url.searchParams.get('project') || undefined
+        const days = parseRangeDays(url.searchParams)
+        const json = await buildStats(env, projectFilter, days)
+        return jsonResponse(json)
       }
       if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-          const projectFilter = url.searchParams.get('project') || undefined;
-          const days = parseRangeDays(url.searchParams);
-          const daysForData = days + 1; // fetch one extra UTC day to handle local-day boundaries
-          const json = await buildStats(env, projectFilter, daysForData);
+        const projectFilter = url.searchParams.get('project') || undefined
+        const days = parseRangeDays(url.searchParams)
+        const daysForData = days + 1 // fetch one extra UTC day to handle local-day boundaries
+        const json = await buildStats(env, projectFilter, daysForData)
         return new Response(renderHtml(json, projectFilter, days), {
           status: 200,
-          headers: { 'content-type': 'text/html; charset=utf-8' },
-        });
+          headers: { 'content-type': 'text/html; charset=utf-8' }
+        })
       }
       if (request.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: corsHeaders() });
+        return new Response(null, { status: 204, headers: corsHeaders() })
       }
-      return new Response('Not found', { status: 404 });
+      return new Response('Not found', { status: 404 })
     } catch (err) {
-      return new Response('Server error', { status: 500 });
+      return new Response('Server error', { status: 500 })
     }
-  },
-};
+  }
+}
 
-function corsHeaders() {
+function corsHeaders () {
   return {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-headers': 'content-type',
-  };
+    'access-control-allow-headers': 'content-type'
+  }
 }
 
-function normalizeProject(p) {
+function normalizeProject (p) {
   // Trim and clamp project name length to prevent abuse; allow common chars
-  let s = (p || '').toString().trim();
-  if (s.length > 100) s = s.slice(0, 100);
+  let s = (p || '').toString().trim()
+  if (s.length > 100) s = s.slice(0, 100)
   // Avoid control characters and newlines
-  s = s.replace(/[\r\n\t\0]/g, ' ').trim();
-  return s || 'NamelessNameSanitizerBot';
+  s = s.replace(/[\r\n\t\0]/g, ' ').trim()
+  return s || 'NamelessNameSanitizerBot'
 }
 
-async function handleCensus(request, env) {
+async function handleCensus (request, env) {
   if (!env.TELEMETRY || !env.TELEMETRY.list) {
-    return new Response('KV not bound', { status: 500 });
+    return new Response('KV not bound', { status: 500 })
   }
-  const ct = request.headers.get('content-type') || '';
+  const ct = request.headers.get('content-type') || ''
   if (!ct.toLowerCase().includes('application/json')) {
-    return new Response('Unsupported Media Type', { status: 415, headers: corsHeaders() });
+    return new Response('Unsupported Media Type', { status: 415, headers: corsHeaders() })
   }
-  let body;
+  let body
   try {
-    body = await request.json();
+    body = await request.json()
   } catch {
-    return new Response('Bad Request', { status: 400, headers: corsHeaders() });
+    return new Response('Bad Request', { status: 400, headers: corsHeaders() })
   }
   // Normalize id and project; enforce per-day (UTC) dedupe by ignoring client-provided date
-  const id = ((body?.id || '').toString()).toLowerCase();
-    // Allow header override for project to support clients that can't customize payload
-    const headerProject = request.headers.get('x-project-name') || request.headers.get('X-Project-Name');
-    let project = (headerProject || body?.projectname || body?.project || '').toString().trim();
-    if (!project) project = 'NamelessNameSanitizerBot';
-    project = normalizeProject(project);
-    // Ignore blocked projects
-    if (PROJECT_DENYLIST.has(project.toLowerCase())) {
-      return new Response(null, { status: 204, headers: corsHeaders() });
-    }
+  const id = ((body?.id || '').toString()).toLowerCase()
+  // Allow header override for project to support clients that can't customize payload
+  const headerProject = request.headers.get('x-project-name') || request.headers.get('X-Project-Name')
+  let project = (headerProject || body?.projectname || body?.project || '').toString().trim()
+  if (!project) project = 'NamelessNameSanitizerBot'
+  project = normalizeProject(project)
+  // Ignore blocked projects
+  if (PROJECT_DENYLIST.has(project.toLowerCase())) {
+    return new Response(null, { status: 204, headers: corsHeaders() })
+  }
   // Always use current UTC day for counting/deduplication
-  const date = new Date().toISOString().slice(0, 10);
+  const date = new Date().toISOString().slice(0, 10)
   if (!/^[a-f0-9]{64}$/.test(id)) {
     // Require a SHA-256 hex id for deduping; accept but do not count otherwise
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return new Response(null, { status: 204, headers: corsHeaders() })
   }
 
-  const seenKey = `seen:${date}:${project}:${id}`;
-  const countKey = `counts:${date}:${project}`;
+  const seenKey = `seen:${date}:${project}:${id}`
+  const countKey = `counts:${date}:${project}`
   // Set absolute expiration for the count key to auto-delete after ~1 year
-  let countExpiration;
+  let countExpiration
   try {
-    const [yy, mm, dd] = date.split('-').map((x) => parseInt(x, 10));
+    const [yy, mm, dd] = date.split('-').map((x) => parseInt(x, 10))
     // Expire the count a little over a year after the UTC day begins (366 days for leap-year safety)
-    countExpiration = Math.floor(Date.UTC(yy, (mm || 1) - 1, dd || 1) / 1000) + 366 * 24 * 60 * 60;
+    countExpiration = Math.floor(Date.UTC(yy, (mm || 1) - 1, dd || 1) / 1000) + 366 * 24 * 60 * 60
   } catch {
-    countExpiration = undefined;
+    countExpiration = undefined
   }
 
   try {
-    const seen = await env.TELEMETRY.get(seenKey);
+    const seen = await env.TELEMETRY.get(seenKey)
     if (!seen) {
       // Mark as seen with a TTL to prevent unbounded growth (keep ~10 days)
-      await env.TELEMETRY.put(seenKey, '1', { expirationTtl: 10 * 24 * 60 * 60 });
-      const current = parseInt((await env.TELEMETRY.get(countKey)) || '0', 10) || 0;
-      const putOpts = countExpiration ? { expiration: countExpiration } : undefined;
-      await env.TELEMETRY.put(countKey, String(current + 1), putOpts);
+      await env.TELEMETRY.put(seenKey, '1', { expirationTtl: 10 * 24 * 60 * 60 })
+      const current = parseInt((await env.TELEMETRY.get(countKey)) || '0', 10) || 0
+      const putOpts = countExpiration ? { expiration: countExpiration } : undefined
+      await env.TELEMETRY.put(countKey, String(current + 1), putOpts)
     }
   } catch (e) {
     // Ignore storage errors; keep endpoint resilient
   }
 
-  return new Response(null, { status: 204, headers: corsHeaders() });
+  return new Response(null, { status: 204, headers: corsHeaders() })
 }
 
-async function buildStats(env, projectFilter, daysToShow = DAYS_TO_SHOW) {
+async function buildStats (env, projectFilter, daysToShow = DAYS_TO_SHOW) {
   const out = {
     projects: {}, // { [project]: { [date]: count } }
-    totals: {},   // { [date]: totalAcrossProjects }
-    days: [],
-  };
-  const today = new Date();
-  const days = [];
-  for (let i = 0; i < daysToShow; i++) {
-    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-    d.setUTCDate(d.getUTCDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+    totals: {}, // { [date]: totalAcrossProjects }
+    days: []
   }
-  days.reverse();
-  out.days = days;
+  const today = new Date()
+  const days = []
+  for (let i = 0; i < daysToShow; i++) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+    d.setUTCDate(d.getUTCDate() - i)
+    days.push(d.toISOString().slice(0, 10))
+  }
+  days.reverse()
+  out.days = days
 
   // List all counts and filter to the time window
-  let cursor = undefined;
+  let cursor
   do {
-    const listing = await env.TELEMETRY.list({ prefix: 'counts:', cursor });
+    const listing = await env.TELEMETRY.list({ prefix: 'counts:', cursor })
     for (const key of listing.keys || []) {
-      const parts = key.name.split(':'); // ['counts', YYYY-MM-DD, project]
-      if (parts.length < 3) continue;
-      const date = parts[1];
-      const project = parts.slice(2).join(':');
-      if (PROJECT_DENYLIST.has(project.toLowerCase())) continue;
-      if (!days.includes(date)) continue;
-      if (projectFilter && project !== projectFilter) continue;
-      const val = parseInt((await env.TELEMETRY.get(key.name)) || '0', 10) || 0;
-      if (!out.projects[project]) out.projects[project] = {};
-      out.projects[project][date] = val;
-      out.totals[date] = (out.totals[date] || 0) + val;
+      const parts = key.name.split(':') // ['counts', YYYY-MM-DD, project]
+      if (parts.length < 3) continue
+      const date = parts[1]
+      const project = parts.slice(2).join(':')
+      if (PROJECT_DENYLIST.has(project.toLowerCase())) continue
+      if (!days.includes(date)) continue
+      if (projectFilter && project !== projectFilter) continue
+      const val = parseInt((await env.TELEMETRY.get(key.name)) || '0', 10) || 0
+      if (!out.projects[project]) out.projects[project] = {}
+      out.projects[project][date] = val
+      out.totals[date] = (out.totals[date] || 0) + val
     }
-    cursor = listing.cursor;
-  } while (cursor);
+    cursor = listing.cursor
+  } while (cursor)
 
-  return out;
+  return out
 }
 
-function jsonResponse(obj) {
+function jsonResponse (obj) {
   return new Response(JSON.stringify(obj), {
     status: 200,
-    headers: { 'content-type': 'application/json; charset=utf-8', ...corsHeaders() },
-  });
+    headers: { 'content-type': 'application/json; charset=utf-8', ...corsHeaders() }
+  })
 }
 
-function renderHtml(stats, selectedProject, daysToShow) {
-  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const fmt = (n) => Number(n || 0).toLocaleString('en-US');
-  const projects = Object.keys(stats.projects).sort();
-  const today = stats.days[stats.days.length - 1];
-  const rangeLabel = (d)=> d>=365? '1 year' : d>=180? '6 months' : d>=90? '3 months' : d>=30? '30 days' : '7 days';
-  const colorList = (n)=>{ const base=[210,280,150,20,330,100,260,40,0,180]; const out=[]; for(let i=0;i<n;i++){ const hue = base[i % base.length] + (Math.floor(i/base.length)*30); out.push('hsl(' + hue + ', 70%, 60%)'); } return out; };
+function renderHtml (stats, selectedProject, daysToShow) {
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+  const projects = Object.keys(stats.projects).sort()
+  const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
+  const colorList = (n) => { const base = [210, 280, 150, 20, 330, 100, 260, 40, 0, 180]; const out = []; for (let i = 0; i < n; i++) { const hue = base[i % base.length] + (Math.floor(i / base.length) * 30); out.push('hsl(' + hue + ', 70%, 60%)') } return out }
 
   const head = `<!doctype html><html lang="en"><head>
   <meta charset="utf-8"/>
@@ -224,7 +222,7 @@ function renderHtml(stats, selectedProject, daysToShow) {
     code{background:#111827;border:1px solid var(--border);padding:2px 6px;border-radius:6px}
     .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
   </style>
-  </head><body>`;
+  </head><body>`
 
   const toolbar = `
   <div class="toolbar">
@@ -233,19 +231,19 @@ function renderHtml(stats, selectedProject, daysToShow) {
       <label for="project-filter" class="muted" style="margin-right:6px">Project</label>
       <select id="project-filter" class="select">
         <option value="" ${!selectedProject ? 'selected' : ''}>All projects</option>
-        ${projects.map(p=>`<option value="${esc(p)}" ${selectedProject===p?'selected':''}>${esc(p)}</option>`).join('')}
+        ${projects.map(p => `<option value="${esc(p)}" ${selectedProject === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
       </select>
       <label for="range" class="muted" style="margin:0 6px 0 12px">Timeframe</label>
       <select id="range" class="select">
-        ${[[7,'7d'],[30,'30d'],[90,'90d'],[180,'180d'],[365,'365d']].map(([d,k])=>`<option value="${k}" ${daysToShow===d?'selected':''}>${rangeLabel(d)}</option>`).join('')}
+        ${[[7, '7d'], [30, '30d'], [90, '90d'], [180, '180d'], [365, '365d']].map(([d, k]) => `<option value="${k}" ${daysToShow === d ? 'selected' : ''}>${rangeLabel(d)}</option>`).join('')}
       </select>
     </div>
-  </div>`;
+  </div>`
 
   const intro = `
   <header>
     <h1>Nameless Telemetry</h1>
-    <nav class="muted">Endpoint: <code>/census</code> • JSON: <a href="/api/stats${(()=>{const sp=new URLSearchParams(); if(selectedProject) sp.set('project', selectedProject); if(daysToShow!==undefined) sp.set('range', daysToShow>=365?'365d':daysToShow+'d'); const q=sp.toString(); return q?`?${q}`:'';})()}">/api/stats</a></nav>
+    <nav class="muted">Endpoint: <code>/census</code> • JSON: <a href="/api/stats${(() => { const sp = new URLSearchParams(); if (selectedProject) sp.set('project', selectedProject); if (daysToShow !== undefined) sp.set('range', daysToShow >= 365 ? '365d' : daysToShow + 'd'); const q = sp.toString(); return q ? `?${q}` : '' })()}">/api/stats</a></nav>
   </header>
   <div class="panel">
     ${toolbar}
@@ -253,8 +251,8 @@ function renderHtml(stats, selectedProject, daysToShow) {
       <div class="chart-head">
         <div class="legend">
           ${(() => {
-            const colors = colorList(projects.length);
-            return projects.map((p,i)=>`<span class=\"legend-item\"><span class=\"swatch\" style=\"background:${colors[i]}\"></span>${esc(p)}</span>`).join('');
+            const colors = colorList(projects.length)
+            return projects.map((p, i) => `<span class="legend-item"><span class="swatch" style="background:${colors[i]}"></span>${esc(p)}</span>`).join('')
           })()}
         </div>
   <div class="muted"><span id="range-dates"></span></div>
@@ -263,7 +261,7 @@ function renderHtml(stats, selectedProject, daysToShow) {
         <canvas id="chart" height="300"></canvas>
       </div>
     </div>
-  </div>`;
+  </div>`
 
   const foot = `
   <div class="container">
@@ -478,40 +476,40 @@ function renderHtml(stats, selectedProject, daysToShow) {
       }
     })();
   </script>
-  </body></html>`;
+  </body></html>`
 
-  const bodyOpen = `<div class="container">`;
-  const bodyClose = `</div>`;
-  return head + bodyOpen + intro + bodyClose + foot;
+  const bodyOpen = '<div class="container">'
+  const bodyClose = '</div>'
+  return head + bodyOpen + intro + bodyClose + foot
 }
 
 // Background maintenance: delete any count keys older than 1 year
-async function maybeCleanupOldCounts(env) {
+async function maybeCleanupOldCounts (env) {
   try {
-    const markerKey = 'maintenance:lastCleanupAt';
-    const today = new Date().toISOString().slice(0, 10); // UTC date string
-    const last = await env.TELEMETRY.get(markerKey);
-    if (last === today) return; // already ran today
-    await env.TELEMETRY.put(markerKey, today, { expirationTtl: 3 * 24 * 60 * 60 });
+    const markerKey = 'maintenance:lastCleanupAt'
+    const today = new Date().toISOString().slice(0, 10) // UTC date string
+    const last = await env.TELEMETRY.get(markerKey)
+    if (last === today) return // already ran today
+    await env.TELEMETRY.put(markerKey, today, { expirationTtl: 3 * 24 * 60 * 60 })
 
-    const cutoff = new Date();
-    cutoff.setUTCDate(cutoff.getUTCDate() - 365);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const cutoff = new Date()
+    cutoff.setUTCDate(cutoff.getUTCDate() - 365)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
 
-    let cursor = undefined;
+    let cursor
     do {
-      const listing = await env.TELEMETRY.list({ prefix: 'counts:', cursor });
-      const toDelete = [];
+      const listing = await env.TELEMETRY.list({ prefix: 'counts:', cursor })
+      const toDelete = []
       for (const key of (listing.keys || [])) {
-        const parts = key.name.split(':'); // ['counts', YYYY-MM-DD, project]
-        if (parts.length < 3) continue;
-        const date = parts[1];
-        if (date < cutoffStr) toDelete.push(key.name);
+        const parts = key.name.split(':') // ['counts', YYYY-MM-DD, project]
+        if (parts.length < 3) continue
+        const date = parts[1]
+        if (date < cutoffStr) toDelete.push(key.name)
       }
       // Delete in parallel (best-effort)
-      if (toDelete.length) await Promise.all(toDelete.map((k) => env.TELEMETRY.delete(k)));
-      cursor = listing.cursor;
-    } while (cursor);
+      if (toDelete.length) await Promise.all(toDelete.map((k) => env.TELEMETRY.delete(k)))
+      cursor = listing.cursor
+    } while (cursor)
   } catch {
     // ignore maintenance errors
   }
