@@ -76,7 +76,8 @@ function normalizeProject (p) {
   if (s.length > 100) s = s.slice(0, 100)
   // Avoid control characters and newlines
   s = s.replace(/[\r\n\t\0]/g, ' ').trim()
-  return s || 'NamelessNameSanitizerBot'
+  // Return empty string if nothing usable remains; caller decides how to handle
+  return s
 }
 
 async function handleCensus (request, env) {
@@ -98,8 +99,11 @@ async function handleCensus (request, env) {
   // Allow header override for project to support clients that can't customize payload
   const headerProject = request.headers.get('x-project-name') || request.headers.get('X-Project-Name')
   let project = (headerProject || body?.projectname || body?.project || '').toString().trim()
-  if (!project) project = 'NamelessNameSanitizerBot'
   project = normalizeProject(project)
+  if (!project) {
+    // Abandon data when no valid project name is provided
+    return new Response(null, { status: 204, headers: corsHeaders() })
+  }
   // Ignore blocked projects
   if (PROJECT_DENYLIST.has(project.toLowerCase())) {
     return new Response(null, { status: 204, headers: corsHeaders() })
@@ -196,7 +200,7 @@ function renderHtml (stats, selectedProject, daysToShow) {
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="dark light"/>
   <meta name="theme-color" content="#0b0f14"/>
-  <title>Nameless Telemetry</title>
+  <title>NamelessTelemetry</title>
   <style>
     :root{--bg:#0b0f14;--panel:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--border:#1f2937;--accent:#60a5fa;--today:#1d4ed8;--row:#0b1220;--rowAlt:#0d1424}
     *{box-sizing:border-box}
@@ -242,7 +246,7 @@ function renderHtml (stats, selectedProject, daysToShow) {
 
   const intro = `
   <header>
-    <h1>Nameless Telemetry</h1>
+    <h1>NamelessTelemetry</h1>
     <nav class="muted">Endpoint: <code>/census</code> • JSON: <a href="/api/stats${(() => { const sp = new URLSearchParams(); if (selectedProject) sp.set('project', selectedProject); if (daysToShow !== undefined) sp.set('range', daysToShow >= 365 ? '365d' : daysToShow + 'd'); const q = sp.toString(); return q ? `?${q}` : '' })()}">/api/stats</a></nav>
   </header>
   <div class="panel">
