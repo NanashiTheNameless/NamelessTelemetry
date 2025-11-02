@@ -267,7 +267,7 @@ function renderHtml(stats, selectedProject, daysToShow) {
 
   const foot = `
   <div class="container">
-    <p class="muted">Public dashboard: <a href="https://telemetry.namelessnanashi.dev/">telemetry.namelessnanashi.dev</a></p>
+    <p class="muted">Public dashboard: <a href="https://telemetry.namelessnanashi.dev/">telemetry.namelessnanashi.dev</a> or <a href="https://census.namelessnanashi.dev/">census.namelessnanashi.dev</a></p>
     <p class="muted">Source: <a href="https://github.com/NanashiTheNameless/NamelessTelemetry">NamelessTelemetry</a></p>
   </div>
   <script>
