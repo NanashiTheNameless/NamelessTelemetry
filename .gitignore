@@ -44,3 +44,6 @@ logs/
 
 # Misc
 *.local
+
+# megalinter files (uninteresting for most users)
+megalinter-reports/
