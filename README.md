@@ -18,7 +18,10 @@ NamelessTelemetry is a minimalist, privacy-first telemetry service that records 
 
 - Dashboard is available at: <https://telemetry.namelessnanashi.dev/> and <https://census.namelessnanashi.dev/>
 
-## Links
+## License & Credits
 
-- Source: <https://github.com/NanashiTheNameless/NamelessTelemetry>
-- License: see <license.md>
+See [license.md](<./license.md>).
+
+[All Major Contributors](<./CONTRIBUTORS.md>)
+
+[All Other Contributors](<https://github.com/NanashiTheNameless/NamelessTelemetry/graphs/contributors>)
