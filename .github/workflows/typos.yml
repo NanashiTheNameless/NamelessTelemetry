@@ -1,0 +1,57 @@
+name: Spellcheck & Fix Typos
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    tags-ignore:
+      - "*"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  typos:
+    if: startsWith(github.ref, 'refs/heads/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493
+
+      - name: Install typos
+        uses: crate-ci/typos@80c8a4945eec0f6d464eaf9e65ed98ef085283d1
+        env:
+          INSTALL_DIR: ${{ runner.temp }}
+        with:
+          files: .
+          config: typos.toml
+          write_changes: true
+        id: typos
+
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Pull Request with fixes
+        uses: peter-evans/create-pull-request@46cdba753c74545733b821043d64bd6925fc4da9
+        with:
+          branch: chore/typos-auto-fixes
+          commit-message: "chore(typos): auto-fix spelling errors"
+          title: "chore(typos): auto-fix spelling errors"
+          body: |
+            Automated spelling corrections using the typos action.
+            - Action: crate-ci/typos
+            - Config: typos.toml
+
+            If this PR touches unintended files, adjust `typos.toml` exclusions or accepted words.
+          labels: chore
+          delete-branch: true
+          signoff: false
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "Typos action completed. If changes were made, a PR was opened."
