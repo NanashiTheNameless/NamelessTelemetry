@@ -304,9 +304,9 @@ function renderHtml (stats, selectedProject, daysToShow) {
         const rect = canvas.getBoundingClientRect();
         const cssWidth = Math.max(320, Math.floor(rect.width));
         // Responsive height: scale with width, but cap by viewport height and enforce a minimum
-        const desired = Math.round(cssWidth * 0.6); // 3:5 aspect ratio (taller than 16:9)
-        const maxVH = Math.round((window.innerHeight || 700) * 0.7); // don't exceed 70% of viewport height
-        const minPx = 220; // ensure readability for axes/labels
+        const desired = Math.round(cssWidth * 0.5); // 1:2 aspect ratio
+        const maxVH = Math.round((window.innerHeight || 700) * 0.55); // don't exceed 55% of viewport height
+        const minPx = 200; // ensure readability for axes/labels
         const cssHeight = Math.max(minPx, Math.min(desired, maxVH));
         canvas.width = Math.floor(cssWidth * pxRatio);
         canvas.height = Math.floor(cssHeight * pxRatio);
@@ -346,9 +346,8 @@ function renderHtml (stats, selectedProject, daysToShow) {
 
         const series = Object.keys(data.projects).sort().map(k=>({ name:k, values: selectedUtcDays.map(d=> data.projects[k][d]||0) }));
 
-      // Determine resolution: day if <= 90, else week if <= 180, else month
-        const dCount = labels.length;
-        const resolution = dCount <= 90 ? 'day' : (dCount <= 180 ? 'week' : 'month');
+      // Always plot daily resolution to preserve accuracy for 6mo and 1y ranges
+        const resolution = 'day';
 
       function bucket(labels, series, resolution){
         if (resolution==='day') return { labels, series };
