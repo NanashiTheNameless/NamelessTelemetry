@@ -303,7 +303,11 @@ function renderHtml (stats, selectedProject, daysToShow) {
       function sizeAndDraw(){
         const rect = canvas.getBoundingClientRect();
         const cssWidth = Math.max(320, Math.floor(rect.width));
-        const cssHeight = 360; // a bit taller for visual clarity
+        // Responsive height: scale with width, but cap by viewport height and enforce a minimum
+        const desired = Math.round(cssWidth * 0.6); // 3:5 aspect ratio (taller than 16:9)
+        const maxVH = Math.round((window.innerHeight || 700) * 0.7); // don't exceed 70% of viewport height
+        const minPx = 220; // ensure readability for axes/labels
+        const cssHeight = Math.max(minPx, Math.min(desired, maxVH));
         canvas.width = Math.floor(cssWidth * pxRatio);
         canvas.height = Math.floor(cssHeight * pxRatio);
         canvas.style.width = cssWidth + 'px';
@@ -395,7 +399,7 @@ function renderHtml (stats, selectedProject, daysToShow) {
 
         const bucketed = bucket(labels, series, resolution);
 
-      // Determine bounds
+    // Determine bounds
   const allVals = bucketed.series.flatMap(s=>s.values);
   const rawMax = Math.max(0, Math.max.apply(null, allVals));
   const padding = { l: 64, r: 24, t: 16, b: 36 };
@@ -412,27 +416,46 @@ function renderHtml (stats, selectedProject, daysToShow) {
       // grid & y-axis labels
         ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
         ctx.fillStyle = '#9ca3af';
-        const ticks = 4;
+        // Dynamic tick count based on available height (aim ~60-80px per band)
+        const targetBand = 70;
+        const ticks = Math.max(3, Math.min(8, Math.round(H / targetBand)));
+
         function niceStep(max, count){
           if (!isFinite(max) || max <= 0) return 1;
-          const raw = max / count;
+          // headroom: add 10% so lines don't hug the top
+          const maxWithHeadroom = max * 1.1;
+          const raw = maxWithHeadroom / count;
           const pow = Math.pow(10, Math.floor(Math.log10(raw)));
           const base = raw / pow;
-          let niceBase = 1;
+          // allow 1, 2, 2.5, 5, 10
+          let niceBase;
           if (base <= 1) niceBase = 1;
           else if (base <= 2) niceBase = 2;
+          else if (base <= 2.5) niceBase = 2.5;
           else if (base <= 5) niceBase = 5;
           else niceBase = 10;
-          const step = niceBase * pow;
-          return Math.max(1, Math.round(step));
+          return niceBase * pow;
         }
+
+        function formatNumber(n){
+          if (n >= 1_000_000) {
+            const v = n / 1_000_000;
+            return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(v < 10 ? 1 : 0)) + 'M';
+          }
+          if (n >= 1_000) {
+            const v = n / 1_000;
+            return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(v < 10 ? 1 : 0)) + 'K';
+          }
+          return Math.round(n).toLocaleString('en-US');
+        }
+
         const yStep = niceStep(rawMax, ticks);
-        const yMax = yStep * ticks; // top of axis
+        const yMax = Math.max(yStep, Math.ceil((rawMax * 1.1) / yStep) * yStep); // top of axis with headroom
         for (let i=0;i<=ticks;i++){
           const yv = yStep * i;
           const y = H - (yv / yMax) * H;
           ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-          const label = Math.round(yv).toLocaleString('en-US');
+          const label = formatNumber(yv);
           ctx.textAlign = 'right';
           ctx.fillText(label, -8, y+4);
         }
