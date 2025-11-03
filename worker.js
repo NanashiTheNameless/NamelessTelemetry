@@ -416,42 +416,46 @@ function renderHtml (stats, selectedProject, daysToShow) {
       // grid & y-axis labels
         ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
         ctx.fillStyle = '#9ca3af';
+        ctx.textBaseline = 'alphabetic';
         // Dynamic tick count based on available height (aim ~60-80px per band)
         const targetBand = 70;
-        const ticks = Math.max(3, Math.min(8, Math.round(H / targetBand)));
+        const desiredTicks = Math.max(3, Math.min(8, Math.round(H / targetBand)));
 
-        function niceStep(max, count){
+        function niceStepFor(max, desired){
           if (!isFinite(max) || max <= 0) return 1;
-          // headroom: add 10% so lines don't hug the top
-          const maxWithHeadroom = max * 1.1;
-          const raw = maxWithHeadroom / count;
+          const raw = (max * 1.1) / desired; // with headroom
           const pow = Math.pow(10, Math.floor(Math.log10(raw)));
           const base = raw / pow;
-          // allow 1, 2, 2.5, 5, 10
+          // restrict to integer-friendly 1, 2, 5, 10 progression
           let niceBase;
           if (base <= 1) niceBase = 1;
           else if (base <= 2) niceBase = 2;
-          else if (base <= 2.5) niceBase = 2.5;
           else if (base <= 5) niceBase = 5;
           else niceBase = 10;
-          return niceBase * pow;
+          // ensure integer step (e.g., if pow < 1, step could be fractional; round up)
+          const step = niceBase * pow;
+          return Math.max(1, Math.ceil(step));
         }
 
         function formatNumber(n){
-          if (n >= 1_000_000) {
-            const v = n / 1_000_000;
-            return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(v < 10 ? 1 : 0)) + 'M';
-          }
-          if (n >= 1_000) {
-            const v = n / 1_000;
-            return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(v < 10 ? 1 : 0)) + 'K';
-          }
+          // Always show whole numbers only
           return Math.round(n).toLocaleString('en-US');
         }
 
-        const yStep = niceStep(rawMax, ticks);
-        const yMax = Math.max(yStep, Math.ceil((rawMax * 1.1) / yStep) * yStep); // top of axis with headroom
-        for (let i=0;i<=ticks;i++){
+        let yStep, yMax, tickCount;
+        if (!isFinite(rawMax) || rawMax <= 0) {
+          // Safe defaults when no data (integers only)
+          tickCount = 4; // 0..4 => 5 grid lines
+          yMax = 4;      // integer top
+          yStep = 1;     // integer step
+        } else {
+          yStep = niceStepFor(rawMax, desiredTicks);
+          tickCount = Math.max(1, Math.ceil((rawMax * 1.1) / yStep));
+          yMax = yStep * tickCount;
+        }
+
+        // Draw grid and labels, aligned to computed ticks
+        for (let i=0; i<=tickCount; i++){
           const yv = yStep * i;
           const y = H - (yv / yMax) * H;
           ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
