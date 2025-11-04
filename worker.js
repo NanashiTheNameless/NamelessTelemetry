@@ -52,6 +52,16 @@ export default {
           headers: { 'content-type': 'text/html; charset=utf-8' }
         })
       }
+      if (request.method === 'GET' && (url.pathname === '/og.svg' || url.pathname === '/og')) {
+        const projectFilter = url.searchParams.get('project') || undefined
+        const days = parseRangeDays(url.searchParams)
+        const json = await buildStats(env, projectFilter, days)
+        const svg = renderOgSvg(json, projectFilter, days)
+        return new Response(svg, {
+          status: 200,
+          headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300' }
+        })
+      }
       if (request.method === 'OPTIONS') {
         return new Response(null, { status: 204, headers: corsHeaders() })
       }
@@ -212,6 +222,15 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   } catch (e) {
     canonical = baseUrl || ''
   }
+  // Build dynamic OG image URL (SVG) that reflects selected project or totals
+  let ogImageUrl = ''
+  try {
+    if (canonical) {
+      const img = new URL(canonical)
+      img.pathname = '/og.svg'
+      ogImageUrl = img.toString()
+    }
+  } catch {}
   const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
   const colorList = (n) => { const base = [210, 280, 150, 20, 330, 100, 260, 40, 0, 180]; const out = []; for (let i = 0; i < n; i++) { const hue = base[i % base.length] + (Math.floor(i / base.length) * 30); out.push('hsl(' + hue + ', 70%, 60%)') } return out }
 
@@ -228,6 +247,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   <meta property="og:title" content="${esc(pageTitle)}"/>
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
+  ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n  <meta property="og:image:type" content="image/svg+xml"/>\n  <meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
   ${canonical ? `<meta property="og:image" content="${esc((new URL(canonical)).origin + '/social.png')}"/>` : ''}
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="${esc(pageTitle)}"/>
@@ -543,6 +563,111 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   const bodyOpen = '<div class="container">'
   const bodyClose = '</div>'
   return head + bodyOpen + intro + bodyClose + foot
+}
+
+// Render a simple SVG line chart for social previews (1200x630)
+function renderOgSvg (stats, selectedProject, daysToShow) {
+  const W = 1200
+  const H = 630
+  const pad = { l: 90, r: 40, t: 120, b: 80 }
+  const CW = W - pad.l - pad.r
+  const CH = H - pad.t - pad.b
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+  const siteTitle = 'NamelessTelemetry'
+  const title = selectedProject ? `${selectedProject} — ${siteTitle}` : `${siteTitle} — Totals`
+  const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
+
+  const days = stats.days || []
+  // Build values for selected project or totals
+  let values = []
+  if (selectedProject && stats.projects && stats.projects[selectedProject]) {
+    values = days.map((d) => stats.projects[selectedProject][d] || 0)
+  } else {
+    values = days.map((d) => (stats.totals && stats.totals[d]) || 0)
+  }
+
+  const maxValRaw = values.length ? Math.max.apply(null, values) : 0
+  function niceStepFor (max, desired) {
+    if (!isFinite(max) || max <= 0) return 1
+    const raw = (max * 1.1) / desired
+    const pow = Math.pow(10, Math.floor(Math.log10(raw)))
+    const base = raw / pow
+    let niceBase
+    if (base <= 1) niceBase = 1
+    else if (base <= 2) niceBase = 2
+    else if (base <= 5) niceBase = 5
+    else niceBase = 10
+    const step = niceBase * pow
+    return Math.max(1, Math.ceil(step))
+  }
+
+  const desiredTicks = 6
+  let yStep, yMax, tickCount
+  if (!isFinite(maxValRaw) || maxValRaw <= 0) {
+    tickCount = 4
+    yMax = 4
+    yStep = 1
+  } else {
+    yStep = niceStepFor(maxValRaw, desiredTicks)
+    tickCount = Math.max(1, Math.ceil((maxValRaw * 1.1) / yStep))
+    yMax = yStep * tickCount
+  }
+
+  function xPos (i) { return values.length <= 1 ? (pad.l + CW / 2) : pad.l + (i / (values.length - 1)) * CW }
+  function yPos (v) { return pad.t + (CH - (v / (yMax || 1)) * CH) }
+
+  // Build polyline points
+  const pts = values.map((v, i) => `${Math.round(xPos(i))},${Math.round(yPos(v))}`).join(' ')
+
+  // X labels (sparse: first, middle, last)
+  const xLabels = []
+  if (days.length) {
+    xLabels.push({ x: pad.l, text: days[0], anchor: 'start' })
+    if (days.length > 2) xLabels.push({ x: pad.l + CW / 2, text: days[Math.floor(days.length / 2)], anchor: 'middle' })
+    xLabels.push({ x: pad.l + CW, text: days[days.length - 1], anchor: 'end' })
+  }
+
+  // Y grid and labels
+  const yTicks = []
+  for (let i = 0; i <= tickCount; i++) {
+    const val = yStep * i
+    const y = yPos(val)
+    yTicks.push({ y, val })
+  }
+
+  const lineColor = 'hsl(210, 70%, 60%)'
+  const gridColor = '#1f2937'
+  const textColor = '#e5e7eb'
+  const muted = '#9ca3af'
+  const bg = '#0b0f14'
+  const panel = '#0f172a'
+  const border = '#1f2937'
+
+  const desc = selectedProject
+    ? `Daily counts for ${selectedProject} over ${rangeLabel(daysToShow)}. Max ${maxValRaw}.`
+    : `Daily totals over ${rangeLabel(daysToShow)}. Max ${maxValRaw}.`
+
+  return `<?xml version="1.0" encoding="UTF-8"?>\n` +
+`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img">\n` +
+`  <title>${esc(title)}</title>\n` +
+`  <desc>${esc(desc)}</desc>\n` +
+`  <rect x="0" y="0" width="${W}" height="${H}" fill="${bg}"/>\n` +
+`  <g>\n` +
+`    <rect x="${pad.l - 12}" y="${pad.t - 12}" width="${CW + 24}" height="${CH + 24}" rx="14" fill="${panel}" stroke="${border}"/>\n` +
+`    <g stroke="${gridColor}" stroke-width="1">\n` +
+       yTicks.map(t => `      <line x1="${pad.l}" y1="${Math.round(t.y)}" x2="${pad.l + CW}" y2="${Math.round(t.y)}"/>`).join('\n') + '\n' +
+`    </g>\n` +
+`    <g fill="${muted}" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="20">\n` +
+       yTicks.map(t => `      <text x="${pad.l - 14}" y="${Math.round(t.y) + 6}" text-anchor="end">${Math.round(t.val)}</text>`).join('\n') + '\n' +
+`    </g>\n` +
+`    <polyline fill="none" stroke="${lineColor}" stroke-width="4" points="${pts}"/>\n` +
+`  </g>\n` +
+`  <g fill="${textColor}" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">\n` +
+`    <text x="${pad.l}" y="72" font-size="40" font-weight="700">${esc(title)}</text>\n` +
+`    <text x="${pad.l}" y="102" font-size="22" fill="${muted}">${esc(rangeLabel(daysToShow))}</text>\n` +
+     (xLabels.length ? (`    <g fill="${muted}" font-size="20">\n` + xLabels.map(l => `      <text x="${Math.round(l.x)}" y="${pad.t + CH + 40}" text-anchor="${l.anchor}">${esc(l.text)}</text>`).join('\n') + '\n    </g>\n') : '') +
+`  </g>\n` +
+`</svg>`
 }
 
 // Background maintenance: delete any count keys older than 1 year
