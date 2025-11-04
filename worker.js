@@ -574,7 +574,7 @@ function renderOgSvg (stats, selectedProject, daysToShow) {
   const CH = H - pad.t - pad.b
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
   const siteTitle = 'NamelessTelemetry'
-  const title = selectedProject ? `${selectedProject} — ${siteTitle}` : `${siteTitle} — Totals`
+  const title = selectedProject ? `${selectedProject}` : `${siteTitle} — Totals`
   const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
 
   const days = stats.days || []
