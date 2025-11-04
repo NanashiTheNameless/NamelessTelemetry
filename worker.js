@@ -248,15 +248,11 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
   ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n  <meta property="og:image:type" content="image/svg+xml"/>\n  <meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
-  ${canonical
-? `<meta property="og:image" content="${esc((new URL(canonical)).origin + '/social.png')}"/>
-  <meta property="og:image:width" content="1200"/>
-  <meta property="og:image:height" content="630"/>`
-: ''}
+  ${canonical ? `<meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>` : ''}
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="${esc(pageTitle)}"/>
   <meta name="twitter:description" content="${esc(pageDescription)}"/>
-  ${canonical ? `<meta name="twitter:image" content="${esc((new URL(canonical)).origin + '/social.png')}"/>` : ''}
   <style>
     :root{--bg:#0b0f14;--panel:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--border:#1f2937;--accent:#60a5fa;--today:#1d4ed8;--row:#0b1220;--rowAlt:#0d1424}
     *{box-sizing:border-box}
