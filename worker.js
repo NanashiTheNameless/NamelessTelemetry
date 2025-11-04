@@ -268,7 +268,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   <meta property="og:title" content="${esc(pageTitle)}"/>
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
-  ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n  <meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
+  ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n` : ''}
   ${canonical
 ? `<meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>`
