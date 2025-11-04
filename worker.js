@@ -65,10 +65,11 @@ export default {
         })
       }
       if (request.method === 'GET' && url.pathname === '/og') {
-        // Content negotiation: only serve when SVG is explicitly accepted.
-        const accept = (request.headers.get('accept') || '').toLowerCase()
+        // Content negotiation: serve SVG for explicit or permissive Accept headers.
+        const accept = (request.headers.get('accept') || '').toLowerCase().trim()
         const acceptsSvg = /(^|,|\s)image\/svg\+xml(\s*;|\s|,|$)/.test(accept)
-        if (!acceptsSvg) {
+        const acceptsWildcard = accept === '' || accept === '*/*' || /(^|,|\s)\*\/\*(\s*;|\s|,|$)/.test(accept) || /(^|,|\s)image\/\*(\s*;|\s|,|$)/.test(accept)
+        if (!(acceptsSvg || acceptsWildcard)) {
           return new Response(null, {
             status: 204,
             headers: { 'cache-control': 'public, max-age=300', Vary: 'Accept' }
