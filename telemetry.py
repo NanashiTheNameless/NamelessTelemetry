@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-OQL-1.3
-"""Simple, opt-out, privacy-respecting census for self-hosted instances.
+"""Simple, opt-out, privacy-respecting census.
 
 Design goals:
 - Opt-out by default; disable with env var.
