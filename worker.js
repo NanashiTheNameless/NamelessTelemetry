@@ -20,12 +20,12 @@ const PROJECT_DENYLIST = new Set(
 // Match is substring, case-insensitive. Add entries as needed.
 const NO_IMAGE_UA_SET = new Set(
   [
-    'discordbot' // Discord often ignores SVG and shows an unwanted fallback; omit images instead
-    // 'facebookexternalhit', // Facebook crawler (consider omitting if you want no raster fallback)
-    // 'slackbot',            // Slack link expander
-    // 'twitterbot',          // Twitter/X card crawler
-    // 'linkedinbot',         // LinkedIn crawler
-    // 'telegrambot'          // Telegram
+    'discordbot',          // Discord
+    'facebookexternalhit', // Facebook
+    // 'slackbot',         // Slack
+    // 'linkedinbot',      // LinkedIn
+    // 'telegrambot',       // Telegram
+    'twitterbot'           // Twitter/X
   ].map((s) => String(s).toLowerCase())
 )
 
