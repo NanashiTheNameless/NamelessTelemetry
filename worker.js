@@ -47,9 +47,11 @@ export default {
         const days = parseRangeDays(url.searchParams)
         const daysForData = days + 1 // fetch one extra UTC day to handle local-day boundaries
         const json = await buildStats(env, projectFilter, daysForData)
-        return new Response(renderHtml(json, projectFilter, days, url.origin + url.pathname), {
+        const ua = (request.headers.get('user-agent') || '')
+        const forcePngOgImage = /discordbot/i.test(ua)
+        return new Response(renderHtml(json, projectFilter, days, url.origin + url.pathname, { forcePngOgImage }), {
           status: 200,
-          headers: { 'content-type': 'text/html; charset=utf-8' }
+          headers: { 'content-type': 'text/html; charset=utf-8', Vary: 'User-Agent' }
         })
       }
       // Open Graph image endpoints
@@ -82,6 +84,15 @@ export default {
         return new Response(svg, {
           status: 200,
           headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300', Vary: 'Accept' }
+        })
+      }
+      if (request.method === 'GET' && url.pathname === '/og.png') {
+        // Transparent PNG fallback (1x1) for agents like Discord that insist on an image.
+        const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAf7n2NwAAAABJRU5ErkJggg=='
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+        return new Response(bytes, {
+          status: 200,
+          headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=300' }
         })
       }
       if (request.method === 'OPTIONS') {
@@ -221,7 +232,8 @@ function jsonResponse (obj) {
   })
 }
 
-function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
+function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
+  const options = opts || {}
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
   const projects = Object.keys(stats.projects).sort()
   const siteTitle = 'NamelessTelemetry'
@@ -244,15 +256,18 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   } catch (e) {
     canonical = baseUrl || ''
   }
-  // Build dynamic OG image URL using content negotiation endpoint
+  // Build dynamic OG image URL using content negotiation endpoint (or PNG fallback when forced)
   let ogImageUrl = ''
   try {
     if (canonical) {
       const img = new URL(canonical)
-      img.pathname = '/og'
+      img.pathname = (options.forcePngOgImage ? '/og.png' : '/og')
       ogImageUrl = img.toString()
     }
   } catch {}
+  if (options.omitOgImage) {
+    ogImageUrl = ''
+  }
   const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
   const colorList = (n) => { const base = [210, 280, 150, 20, 330, 100, 260, 40, 0, 180]; const out = []; for (let i = 0; i < n; i++) { const hue = base[i % base.length] + (Math.floor(i / base.length) * 30); out.push('hsl(' + hue + ', 70%, 60%)') } return out }
 
