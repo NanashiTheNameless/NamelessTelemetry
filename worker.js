@@ -47,7 +47,7 @@ export default {
         const days = parseRangeDays(url.searchParams)
         const daysForData = days + 1 // fetch one extra UTC day to handle local-day boundaries
         const json = await buildStats(env, projectFilter, daysForData)
-        return new Response(renderHtml(json, projectFilter, days), {
+        return new Response(renderHtml(json, projectFilter, days, url.origin + url.pathname), {
           status: 200,
           headers: { 'content-type': 'text/html; charset=utf-8' }
         })
@@ -189,9 +189,29 @@ function jsonResponse (obj) {
   })
 }
 
-function renderHtml (stats, selectedProject, daysToShow) {
+function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
   const projects = Object.keys(stats.projects).sort()
+  const siteTitle = 'NamelessTelemetry'
+  const defaultDescription = 'Daily self-host census counts for self-hosted projects. Public dashboard and API.'
+  // Build page-specific title/description
+  const pageTitle = selectedProject ? `${selectedProject} — ${siteTitle}` : siteTitle
+  const pageDescription = selectedProject ? `Daily counts for ${selectedProject} on ${siteTitle}.` : defaultDescription
+  // Construct a canonical absolute URL when baseUrl is provided. Include query params for project/range when present.
+  let canonical = ''
+  try {
+    if (baseUrl) {
+      const u = new URL(baseUrl)
+      const sp = new URLSearchParams()
+      if (selectedProject) sp.set('project', selectedProject)
+      if (daysToShow !== undefined && daysToShow !== null) sp.set('range', daysToShow >= 365 ? '365d' : daysToShow + 'd')
+      const q = sp.toString()
+      u.search = q
+      canonical = u.toString()
+    }
+  } catch (e) {
+    canonical = baseUrl || ''
+  }
   const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
   const colorList = (n) => { const base = [210, 280, 150, 20, 330, 100, 260, 40, 0, 180]; const out = []; for (let i = 0; i < n; i++) { const hue = base[i % base.length] + (Math.floor(i / base.length) * 30); out.push('hsl(' + hue + ', 70%, 60%)') } return out }
 
@@ -200,7 +220,19 @@ function renderHtml (stats, selectedProject, daysToShow) {
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="dark light"/>
   <meta name="theme-color" content="#0b0f14"/>
-  <title>NamelessTelemetry</title>
+  <title>${esc(pageTitle)}</title>
+  <meta name="description" content="${esc(pageDescription)}"/>
+  ${canonical ? `<link rel="canonical" href="${esc(canonical)}"/>` : ''}
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content="${esc(siteTitle)}"/>
+  <meta property="og:title" content="${esc(pageTitle)}"/>
+  <meta property="og:description" content="${esc(pageDescription)}"/>
+  ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
+  ${canonical ? `<meta property="og:image" content="${esc((new URL(canonical)).origin + '/social.png')}"/>` : ''}
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="${esc(pageTitle)}"/>
+  <meta name="twitter:description" content="${esc(pageDescription)}"/>
+  ${canonical ? `<meta name="twitter:image" content="${esc((new URL(canonical)).origin + '/social.png')}"/>` : ''}
   <style>
     :root{--bg:#0b0f14;--panel:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--border:#1f2937;--accent:#60a5fa;--today:#1d4ed8;--row:#0b1220;--rowAlt:#0d1424}
     *{box-sizing:border-box}
