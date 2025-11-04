@@ -20,12 +20,12 @@ const PROJECT_DENYLIST = new Set(
 // Match is substring, case-insensitive. Add entries as needed.
 const NO_IMAGE_UA_SET = new Set(
   [
-    'discordbot',          // Discord
+    'discordbot', // Discord
     'facebookexternalhit', // Facebook
     // 'slackbot',         // Slack
     // 'linkedinbot',      // LinkedIn
     // 'telegrambot',       // Telegram
-    'twitterbot'           // Twitter/X
+    'twitterbot' // Twitter/X
   ].map((s) => String(s).toLowerCase())
 )
 
