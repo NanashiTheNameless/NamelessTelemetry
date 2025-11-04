@@ -16,6 +16,19 @@ const PROJECT_DENYLIST = new Set(
   ].map((s) => String(s).toLowerCase())
 )
 
+// User-agents that should not receive image previews (omit og:image entirely).
+// Match is substring, case-insensitive. Add entries as needed.
+const NO_IMAGE_UA_SET = new Set(
+  [
+    'discordbot' // Discord often ignores SVG and shows an unwanted fallback; omit images instead
+    // 'facebookexternalhit', // Facebook crawler (consider omitting if you want no raster fallback)
+    // 'slackbot',            // Slack link expander
+    // 'twitterbot',          // Twitter/X card crawler
+    // 'linkedinbot',         // LinkedIn crawler
+    // 'telegrambot'          // Telegram
+  ].map((s) => String(s).toLowerCase())
+)
+
 function parseRangeDays (searchParams) {
   const range = (searchParams.get('range') || '').toLowerCase()
   const map = { '7d': 7, '30d': 30, '90d': 90, '180d': 180, '365d': 365, '1y': 365 }
@@ -48,8 +61,9 @@ export default {
         const daysForData = days + 1 // fetch one extra UTC day to handle local-day boundaries
         const json = await buildStats(env, projectFilter, daysForData)
         const ua = (request.headers.get('user-agent') || '')
-        const forcePngOgImage = /discordbot/i.test(ua)
-        return new Response(renderHtml(json, projectFilter, days, url.origin + url.pathname, { forcePngOgImage }), {
+        const uaLc = ua.toLowerCase()
+        const omitOgImage = Array.from(NO_IMAGE_UA_SET).some(sig => uaLc.includes(sig))
+        return new Response(renderHtml(json, projectFilter, days, url.origin + url.pathname, { omitOgImage }), {
           status: 200,
           headers: { 'content-type': 'text/html; charset=utf-8', Vary: 'User-Agent' }
         })
@@ -84,15 +98,6 @@ export default {
         return new Response(svg, {
           status: 200,
           headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300', Vary: 'Accept' }
-        })
-      }
-      if (request.method === 'GET' && url.pathname === '/og.png') {
-        // Transparent PNG fallback (1x1) for agents like Discord that insist on an image.
-        const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAf7n2NwAAAABJRU5ErkJggg=='
-        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
-        return new Response(bytes, {
-          status: 200,
-          headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=300' }
         })
       }
       if (request.method === 'OPTIONS') {
@@ -256,12 +261,12 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
   } catch (e) {
     canonical = baseUrl || ''
   }
-  // Build dynamic OG image URL using content negotiation endpoint (or PNG fallback when forced)
+  // Build dynamic OG image URL using content negotiation endpoint
   let ogImageUrl = ''
   try {
     if (canonical) {
       const img = new URL(canonical)
-      img.pathname = (options.forcePngOgImage ? '/og.png' : '/og')
+      img.pathname = '/og'
       ogImageUrl = img.toString()
     }
   } catch {}
@@ -285,7 +290,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
   ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>` : ''}
-  ${canonical
+  ${ogImageUrl
 ? `<meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>`
 : ''}
