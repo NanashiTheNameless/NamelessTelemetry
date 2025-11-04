@@ -647,27 +647,27 @@ function renderOgSvg (stats, selectedProject, daysToShow) {
     ? `Daily counts for ${selectedProject} over ${rangeLabel(daysToShow)}. Max ${maxValRaw}.`
     : `Daily totals over ${rangeLabel(daysToShow)}. Max ${maxValRaw}.`
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n` +
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
 `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img">\n` +
 `  <title>${esc(title)}</title>\n` +
 `  <desc>${esc(desc)}</desc>\n` +
 `  <rect x="0" y="0" width="${W}" height="${H}" fill="${bg}"/>\n` +
-`  <g>\n` +
+'  <g>\n' +
 `    <rect x="${pad.l - 12}" y="${pad.t - 12}" width="${CW + 24}" height="${CH + 24}" rx="14" fill="${panel}" stroke="${border}"/>\n` +
 `    <g stroke="${gridColor}" stroke-width="1">\n` +
        yTicks.map(t => `      <line x1="${pad.l}" y1="${Math.round(t.y)}" x2="${pad.l + CW}" y2="${Math.round(t.y)}"/>`).join('\n') + '\n' +
-`    </g>\n` +
+'    </g>\n' +
 `    <g fill="${muted}" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="20">\n` +
        yTicks.map(t => `      <text x="${pad.l - 14}" y="${Math.round(t.y) + 6}" text-anchor="end">${Math.round(t.val)}</text>`).join('\n') + '\n' +
-`    </g>\n` +
+'    </g>\n' +
 `    <polyline fill="none" stroke="${lineColor}" stroke-width="4" points="${pts}"/>\n` +
-`  </g>\n` +
+'  </g>\n' +
 `  <g fill="${textColor}" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">\n` +
 `    <text x="${pad.l}" y="72" font-size="40" font-weight="700">${esc(title)}</text>\n` +
 `    <text x="${pad.l}" y="102" font-size="22" fill="${muted}">${esc(rangeLabel(daysToShow))}</text>\n` +
      (xLabels.length ? (`    <g fill="${muted}" font-size="20">\n` + xLabels.map(l => `      <text x="${Math.round(l.x)}" y="${pad.t + CH + 40}" text-anchor="${l.anchor}">${esc(l.text)}</text>`).join('\n') + '\n    </g>\n') : '') +
-`  </g>\n` +
-`</svg>`
+'  </g>\n' +
+'</svg>'
 }
 
 // Background maintenance: delete any count keys older than 1 year
