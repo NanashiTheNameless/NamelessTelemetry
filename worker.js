@@ -59,30 +59,8 @@ export default {
         const svg = renderOgSvg(json, projectFilter, days)
         return new Response(svg, {
           status: 200,
-          headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=21600' }
+          headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300' }
         })
-      }
-      if (request.method === 'GET' && url.pathname === '/og.png') {
-        try {
-          // Rasterize the SVG into PNG using Cloudflare Image Resizing
-          const svgUrl = new URL(request.url)
-          svgUrl.pathname = '/og.svg'
-          const resp = await fetch(svgUrl.toString(), {
-            cf: { image: { format: 'png', width: 1200, height: 630, fit: 'cover', quality: 90, background: '#0b0f14' } }
-          })
-          if (!resp || !resp.ok) throw new Error('resize failed')
-          const headers = new Headers(resp.headers)
-          headers.set('cache-control', 'public, max-age=21600')
-          headers.set('content-type', 'image/png')
-          return new Response(resp.body, { status: 200, headers })
-        } catch (e) {
-          // Fallback to static PNG if resizing not available
-          const fallbackUrl = new URL('/social.png', request.url)
-          const fb = await fetch(fallbackUrl.toString())
-          const headers = new Headers(fb.headers)
-          headers.set('cache-control', 'public, max-age=21600')
-          return new Response(fb.body, { status: fb.status, headers })
-        }
       }
       if (request.method === 'OPTIONS') {
         return new Response(null, { status: 204, headers: corsHeaders() })
@@ -253,15 +231,6 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
       ogImageUrl = img.toString()
     }
   } catch {}
-  // Build dynamic PNG image URL for platforms that don't support SVG (e.g., Discord)
-  let pngImageUrl = ''
-  try {
-    if (canonical) {
-      const imgp = new URL(canonical)
-      imgp.pathname = '/og.png'
-      pngImageUrl = imgp.toString()
-    }
-  } catch {}
   const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
   const colorList = (n) => { const base = [210, 280, 150, 20, 330, 100, 260, 40, 0, 180]; const out = []; for (let i = 0; i < n; i++) { const hue = base[i % base.length] + (Math.floor(i / base.length) * 30); out.push('hsl(' + hue + ', 70%, 60%)') } return out }
 
@@ -278,14 +247,14 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   <meta property="og:title" content="${esc(pageTitle)}"/>
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
-  ${pngImageUrl ? `<meta property="og:image" content="${esc(pngImageUrl)}"/>` : ''}
-  ${pngImageUrl ? `<meta property="og:image:width" content="1200"/>` : ''}
-  ${pngImageUrl ? `<meta property="og:image:height" content="630"/>` : ''}
   ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n  <meta property="og:image:type" content="image/svg+xml"/>\n  <meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
+  ${canonical
+? `<meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>`
+: ''}
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="${esc(pageTitle)}"/>
   <meta name="twitter:description" content="${esc(pageDescription)}"/>
-  ${pngImageUrl ? `<meta name="twitter:image" content="${esc(pngImageUrl)}"/>` : ''}
   <style>
     :root{--bg:#0b0f14;--panel:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--border:#1f2937;--accent:#60a5fa;--today:#1d4ed8;--row:#0b1220;--rowAlt:#0d1424}
     *{box-sizing:border-box}
