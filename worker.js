@@ -279,8 +279,8 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
   ${pngImageUrl ? `<meta property="og:image" content="${esc(pngImageUrl)}"/>` : ''}
-  ${pngImageUrl ? `<meta property="og:image:width" content="1200"/>` : ''}
-  ${pngImageUrl ? `<meta property="og:image:height" content="630"/>` : ''}
+  ${pngImageUrl ? '<meta property="og:image:width" content="1200"/>' : ''}
+  ${pngImageUrl ? '<meta property="og:image:height" content="630"/>' : ''}
   ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n  <meta property="og:image:type" content="image/svg+xml"/>\n  <meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:title" content="${esc(pageTitle)}"/>
