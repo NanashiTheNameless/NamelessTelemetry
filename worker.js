@@ -52,7 +52,9 @@ export default {
           headers: { 'content-type': 'text/html; charset=utf-8' }
         })
       }
-      if (request.method === 'GET' && (url.pathname === '/og.svg' || url.pathname === '/og')) {
+      // Open Graph image endpoints
+      if (request.method === 'GET' && url.pathname === '/og.svg') {
+        // Explicit .svg path always serves SVG
         const projectFilter = url.searchParams.get('project') || undefined
         const days = parseRangeDays(url.searchParams)
         const json = await buildStats(env, projectFilter, days)
@@ -60,6 +62,25 @@ export default {
         return new Response(svg, {
           status: 200,
           headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300' }
+        })
+      }
+      if (request.method === 'GET' && url.pathname === '/og') {
+        // Content negotiation: only serve when SVG is explicitly accepted.
+        const accept = (request.headers.get('accept') || '').toLowerCase()
+        const acceptsSvg = /(^|,|\s)image\/svg\+xml(\s*;|\s|,|$)/.test(accept)
+        if (!acceptsSvg) {
+          return new Response(null, {
+            status: 204,
+            headers: { 'cache-control': 'public, max-age=300', Vary: 'Accept' }
+          })
+        }
+        const projectFilter = url.searchParams.get('project') || undefined
+        const days = parseRangeDays(url.searchParams)
+        const json = await buildStats(env, projectFilter, days)
+        const svg = renderOgSvg(json, projectFilter, days)
+        return new Response(svg, {
+          status: 200,
+          headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300', Vary: 'Accept' }
         })
       }
       if (request.method === 'OPTIONS') {
@@ -222,12 +243,12 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   } catch (e) {
     canonical = baseUrl || ''
   }
-  // Build dynamic OG image URL (SVG) that reflects selected project or totals
+  // Build dynamic OG image URL using content negotiation endpoint
   let ogImageUrl = ''
   try {
     if (canonical) {
       const img = new URL(canonical)
-      img.pathname = '/og.svg'
+      img.pathname = '/og'
       ogImageUrl = img.toString()
     }
   } catch {}
@@ -247,7 +268,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   <meta property="og:title" content="${esc(pageTitle)}"/>
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
-  ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n  <meta property="og:image:type" content="image/svg+xml"/>\n  <meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
+  ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>\n  <meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
   ${canonical
 ? `<meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>`
