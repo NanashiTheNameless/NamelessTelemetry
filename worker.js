@@ -193,7 +193,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
   const projects = Object.keys(stats.projects).sort()
   const siteTitle = 'NamelessTelemetry'
-  const defaultDescription = 'Daily self-host census counts for self-hosted projects. Public dashboard and API.'
+  const defaultDescription = 'Daily self-host census counts for Nanashi\'s self-hosted projects. Public dashboard and API.'
   // Build page-specific title/description
   const pageTitle = selectedProject ? `${selectedProject} — ${siteTitle}` : siteTitle
   const pageDescription = selectedProject ? `Daily counts for ${selectedProject} on ${siteTitle}.` : defaultDescription
