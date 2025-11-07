@@ -20,7 +20,7 @@ NamelessTelemetry is a minimalist, privacy-first telemetry service that records 
 
 ## License & Credits
 
-See [license.md](<./license.md>).
+See [LICENSE.md](<./LICENSE.md>).
 
 [All Major Contributors](<./CONTRIBUTORS.md>)
 
