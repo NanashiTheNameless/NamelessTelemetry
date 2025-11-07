@@ -1,0 +1,5 @@
+[flake8]
+# E501: line too long (acceptable in this project)
+ignore = E501
+max-line-length = 120
+exclude = .git,__pycache__,.venv,venv,build,dist,megalinter-reports

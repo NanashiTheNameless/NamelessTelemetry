@@ -1,0 +1,49 @@
+# Node dependencies
+node_modules/
+
+# Package managers
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Cloudflare Wrangler
+.wrangler/
+.wrangler/state/
+.wrangler/kv/
+.wrangler/pages/
+
+# Build output (if present)
+dist/
+build/
+*.cache/
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+
+# Coverage & test artifacts
+coverage/
+.nyc_output/
+
+# Archives
+*.tgz
+*.zip
+
+# Logs
+logs/
+*.log
+
+# Misc
+*.local
+
+# megalinter files (uninteresting for most users)
+megalinter-reports/
