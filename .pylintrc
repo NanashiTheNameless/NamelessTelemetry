@@ -1,0 +1,15 @@
+[MASTER]
+# Python source code encoding
+extension-pkg-whitelist=
+
+[MESSAGES CONTROL]
+# Disable specific messages
+# E0401: import-error (useful in containers or when optional deps aren't installed)
+disable=E0401
+
+[FORMAT]
+max-line-length=120
+
+[TYPECHECK]
+ignored-modules=
+ignored-classes=

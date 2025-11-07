@@ -1,0 +1,9 @@
+{
+  "workbench.editor.restoreViewState": false,
+  "editor.foldingImportsByDefault": false,
+  "editor.folding": true,
+  "editor.unfoldOnClickAfterEndOfLine": true,
+  "[python]": {
+    "editor.foldingImportsByDefault": false
+  }
+}
