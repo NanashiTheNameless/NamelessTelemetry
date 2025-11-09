@@ -1,4 +1,4 @@
-# This software uses NNCL 1.0 see LICENSE.md for more info
+# This software uses NNCL v1.1 see LICENSE.md for more info
 """Simple, opt-out, privacy-respecting census.
 
 Design goals:
@@ -232,7 +232,7 @@ def _seconds_until_next_even_utc_hour() -> float:
         else:
             nxt = base + timedelta(hours=1)
     delta = (nxt - now).total_seconds()
-    return max(1.0, delta)
+    return max(v1.1, delta)
 
 
 async def _periodic_ping_loop() -> None:
