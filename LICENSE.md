@@ -41,7 +41,7 @@ When You Share the Work or any Adaptation, You must:
 
 ## 4. Policy (Ethical Standards & Prohibitions)
 
-The Work must **not** be used to promote or enable bigotry, discrimination, or the violation of human rights. Specifically:
+The Work must **not** be used to promote or enable bigotry, discrimination, or the violation of human rights. Specifically including but not limited to:
 
 - No use for racism, xenophobia, queerphobia, transphobia, homophobia, enbyphobia, or misogyny.
 - No use to inflict or facilitate violence, repression, or human-rights abuses as defined by widely recognized frameworks (e.g., the UDHR and ECHR) and relevant court rulings.
@@ -64,7 +64,7 @@ You may charge **actual, verifiable cost of physical media and postage only**, w
 
 ## 6. Strong Share-Alike (Same License)
 
-Any Adaptation You Share must be licensed **only** under this **NNCL v1.1** license, in full, with the Policy intact. No other license (including dual-licensing by You) may be applied to the Adaptation You Share, and You may not add field-of-use, patent, or other restrictions conflicting with this license.
+Any Adaptation You Share must be licensed **only** under this **NNCL v1.1** (or later) license, in full, with the Policy intact. No other license (including dual-licensing by You) may be applied to the Adaptation You Share, and You may not add field-of-use, patent, or other restrictions conflicting with this license.
 
 **Network use (including providing functionality via network, SaaS, or API) constitutes Sharing** for the purpose of this section and triggers all obligations above (Attribution, Source, Policy, and Same-License).
 
