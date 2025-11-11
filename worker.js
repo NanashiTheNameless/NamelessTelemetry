@@ -328,7 +328,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
 
   const toolbar = `
   <div class="toolbar">
-    <div class="muted">Daily self-host census counts • <span class="badge">${rangeLabel(daysToShow)}</span></div>
+    <div class="muted">Daily self-host census counts (UTC) • <span class="badge">${rangeLabel(daysToShow)}</span></div>
     <div>
       <label for="project-filter" class="muted" style="margin-right:6px">Project</label>
       <select id="project-filter" class="select">
@@ -415,32 +415,13 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
         const data = { daysUtc: ${JSON.stringify(stats.days)}, projects: ${JSON.stringify(stats.projects)} };
         const daysSelected = ${Number.isFinite(daysToShow) ? daysToShow : 7};
 
-        // Build local calendar day labels (today back N-1 days)
-        const now = new Date();
-        const localDays = [];
-        for (let i=daysSelected-1; i>=0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          d.setDate(d.getDate() - i);
-          // en-CA => YYYY-MM-DD
-          localDays.push(d.toLocaleDateString('en-CA'));
-        }
-
-        // Map each local day to a best UTC bucket (prefer exact match, else nearest prior available)
+        // Use UTC calendar day labels (server buckets are UTC). Show the most recent N UTC days.
         const utcDays = data.daysUtc.slice();
-        function bestUtcForLocal(local){
-          if (utcDays.includes(local)) return local;
-          // find nearest prior UTC day
-          for (let i=utcDays.length-1; i>=0; i--) {
-            if (utcDays[i] <= local) return utcDays[i];
-          }
-          return utcDays[0];
-        }
-        const selectedUtcDays = localDays.map(bestUtcForLocal);
-
-        // Labels reflect the local calendar days; values come from mapped UTC buckets
-        const labels = localDays;
+        const selectedUtcDays = utcDays.slice(Math.max(0, utcDays.length - daysSelected));
+        // Labels are YYYY-MM-DD UTC strings
+        const labels = selectedUtcDays;
         const rangeEl = document.getElementById('range-dates');
-        if (rangeEl && labels.length){ rangeEl.textContent = labels[0] + (labels.length>1?(' → ' + labels[labels.length-1]):''); }
+        if (rangeEl && labels.length){ rangeEl.textContent = labels[0] + (labels.length>1?(' → ' + labels[labels.length-1]):'') + ' (UTC)'; }
 
         const series = Object.keys(data.projects).sort().map(k=>({ name:k, values: selectedUtcDays.map(d=> data.projects[k][d]||0) }));
 
