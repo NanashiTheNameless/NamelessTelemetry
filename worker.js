@@ -58,7 +58,7 @@ export default {
       if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
         const projectFilter = url.searchParams.get('project') || undefined
         const days = parseRangeDays(url.searchParams)
-        const daysForData = days + 1 // fetch one extra UTC day to handle local-day boundaries
+        const daysForData = days
         const json = await buildStats(env, projectFilter, daysForData)
         const ua = (request.headers.get('user-agent') || '')
         const uaLc = ua.toLowerCase()
