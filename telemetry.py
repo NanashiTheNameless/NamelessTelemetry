@@ -232,7 +232,7 @@ def _seconds_until_next_even_utc_hour() -> float:
         else:
             nxt = base + timedelta(hours=1)
     delta = (nxt - now).total_seconds()
-    return max(v1.1, delta)
+    return max(1.0, delta)
 
 
 async def _periodic_ping_loop() -> None:
