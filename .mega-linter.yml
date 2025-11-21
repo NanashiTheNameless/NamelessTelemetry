@@ -28,9 +28,9 @@ DISABLE:
 
 SHOW_ELAPSED_TIME: true
 
-MARKDOWN_FILTER_REGEX_EXCLUDE: '(license\.md|docs/licenses)'
+MARKDOWN_FILTER_REGEX_EXCLUDE: '(license\.md|LICENSE\.md|docs/licenses)'
 MARKDOWN_MARKDOWN_LINK_CHECK_DISABLE_ERRORS: true
-SPELL_FILTER_REGEX_EXCLUDE: (valestyles|\.github|docs/licenses)
+SPELL_FILTER_REGEX_EXCLUDE: (valestyles|\.github|license\.md|LICENSE\.md|docs/licenses)
 
 FILEIO_REPORTER: false
 # Uncomment if you want MegaLinter to detect errors but not block CI to pass
