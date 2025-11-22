@@ -1,4 +1,4 @@
-// This software uses NNCL v1.2 see LICENSE.md for more info
+// This software is licensed under NNCL v1.2 see LICENSE.md for more info
 // NamelessTelemetry Cloudflare Worker
 // - POST /census: accept minimal JSON payload from clients
 //   { id: sha256, date: YYYY-MM-DD, projectname|project: string }
