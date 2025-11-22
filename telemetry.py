@@ -1,4 +1,4 @@
-# This software uses NNCL v1.1 see LICENSE.md for more info
+# This software uses NNCL v1.2 see LICENSE.md for more info
 """Simple, opt-out, privacy-respecting census.
 
 Design goals:
