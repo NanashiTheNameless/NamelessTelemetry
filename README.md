@@ -1,4 +1,4 @@
-# NamelessTelemetry
+# NamelessTelemetry [![Ask DeepWiki](<https://deepwiki.com/badge.svg>)](<https://deepwiki.com/NanashiTheNameless/NamelessTelemetry>)
 
 NamelessTelemetry is a minimalist, privacy-first telemetry service that records anonymous, per-project daily counts and presents them on a small dark-mode dashboard. It runs entirely on Cloudflare Workers with KV storage.
 
