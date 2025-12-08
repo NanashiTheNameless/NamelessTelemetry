@@ -1,4 +1,4 @@
-# Nameless Nanashi Code License (NNCL) v1.2
+# Nameless Nanashi Code License (NNCL) v1.3
 
 **Copyright © 2025 [NamelessNanashi](<https://git.NamelessNanashi.dev/>)**
 
@@ -64,7 +64,7 @@ You may charge **actual, verifiable cost of physical media and postage only**, w
 
 ## 6. Strong Share-Alike (Same License)
 
-Any Adaptation You Share must be licensed **only** under this **NNCL v1.2** (or later) license, in full, with the Policy intact. No other license (including dual-licensing by You) may be applied to the Adaptation You Share, and You may not add field-of-use, patent, or other restrictions conflicting with this license.
+Any Adaptation You Share must be licensed **only** under this **NNCL v1.3** (or later) license, in full, with the Policy intact. No other license (including dual-licensing by You) may be applied to the Adaptation You Share, and You may not add field-of-use, patent, or other restrictions conflicting with this license.
 
 **Network use (including providing functionality via network, SaaS, or API) constitutes Sharing** for the purpose of this section and triggers all obligations above (Attribution, Source, Policy, and Same-License).
 
@@ -93,16 +93,18 @@ This license does not grant permission to use the Licensor’s name, logos, or t
 
 ## 9A. Licensor’s Right to Revoke (For Any Reason or No Reason)
 
-1. **Unilateral Revocation**: **The Licensor may revoke Your rights under this license, in whole or in part, at any time, for any reason or no reason**, whether or not You are in breach.
-2. **Effective Notice**: Revocation is effective upon the earliest of:
+1. **Unilateral Revocation**: The Licensor may revoke Your rights under this license, in whole or in part, for any reason or no reason, whether or not You are in breach.
+2. **Notice Requirement and Grace Period**: Revocation becomes effective **7 calendar days** after the earliest of the following notice methods:
    - (a) the Licensor publishing a revocation notice in the repository containing the Work, or on a project website linked from the README;
    - (b) direct written notice (including email) from the Licensor to You; or
    - (c) public notice identifying You or a defined class of users to which You belong.
 3. **Scope**: Revocation may be user-specific, organization-specific, jurisdiction-specific, or project-wide, at the Licensor’s discretion.
-4. **Post-Revocation Obligations**: Upon revocation, all rights granted to You immediately cease. You must promptly stop using, running, sharing, or distributing the Work and any Adaptations, and (if applicable) take reasonable steps to remove deployments and distribution points. You may keep a single archival copy solely for compliance, audit, or litigation purposes.
-5. **No Obligation to Refund**: Revocation creates no obligation on the Licensor to provide support, updates, or refunds (if any were paid under a separate agreement).
-6. **Commercial Licenses**: If You hold a separate written commercial license from the Licensor, this Section 9A does not affect that agreement unless the revocation notice expressly states otherwise.
-7. **Survival**: Sections 11–14 survive revocation. Sections 3–6 survive only to the extent necessary to complete takedown/cessation obligations above.
+4. **Post-Revocation Obligations**: Upon the effective date of revocation, all rights granted to You under this license cease. You must promptly stop using, running, sharing, or distributing the Work and any Adaptations, and (if applicable) take reasonable steps to remove deployments and distribution points. You may retain a single archival copy solely for compliance, audit, or litigation purposes.
+5. **No Retroactive Effect**: Revocation does not retroactively invalidate or render infringing any use, reproduction, distribution, or adaptation of the Work that occurred prior to the effective revocation date under a valid license.
+6. **No Obligation to Refund**: Revocation creates no obligation on the Licensor to provide support, updates, or refunds (if any were paid under a separate agreement).
+7. **Commercial Licenses**: If You hold a separate written commercial license from the Licensor, this Section 9A does not affect that agreement unless the revocation notice expressly states otherwise.
+8. **Reinstatement**: The Licensor may, at their sole discretion, reinstate Your license rights under this section in writing (including by email or public notice), subject to any conditions the Licensor may impose.
+9. **Survival**: Sections 11–14 survive revocation. Sections 3–6 survive only to the extent necessary to complete the takedown and cessation obligations described above.
 
 ---
 
@@ -136,4 +138,4 @@ If any provision of this license is unenforceable, the remaining provisions rema
 
 ## 14. Entire License; Updates
 
-This is the entire agreement regarding the Work. The Licensor may publish new versions of NNCL; unless the Licensor explicitly states otherwise, Your received Work remains under the version originally applied.
+This is the entire agreement regarding the Work. The Licensor may publish new versions of the NNCL. Each version of the Work remains licensed under the specific NNCL version stated or included at the time of its release. Updates to the NNCL do not retroactively alter the license of previously released versions of the Work. The Licensor may choose to apply a newer NNCL version to subsequent releases of the Work by explicitly doing so in the source code, documentation, or accompanying license file.
