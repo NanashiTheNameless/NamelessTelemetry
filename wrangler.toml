@@ -9,8 +9,9 @@ routes = [
   { pattern = "census.namelessnanashi.dev/*", zone_name = "namelessnanashi.dev" }
 ]
 
-# KV namespace binding is configured in the Cloudflare dashboard
-# Do not add it to this config file to keep the ID private
+[[kv_namespaces]]
+binding = "TELEMETRY"
+id = "c84deb2f62574d3bb1e54a41522e2d95"
 
 [observability]
 enabled = false
