@@ -1,9 +1,10 @@
 # This software is licensed under NNCL v1.3 see LICENSE.md for more info
 name = "nameless-telemetry"
 main = "worker.js"
-compatibility_date = "2026-01-01"
+compatibility_date = "2026-01-20"
 workers_dev = false
 send_metrics = false
+
 routes = [
   { pattern = "telemetry.namelessnanashi.dev/*", zone_name = "namelessnanashi.dev" },
   { pattern = "census.namelessnanashi.dev/*", zone_name = "namelessnanashi.dev" }
