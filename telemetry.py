@@ -129,18 +129,6 @@ def _hash_id(raw: str) -> str:
     return h.hexdigest()
 
 
-def _get_version() -> Optional[str]:
-    try:
-        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        vf = os.path.join(repo_root, "VERSION")
-        if os.path.exists(vf):
-            with open(vf, "r", encoding="utf-8") as fh:
-                return fh.read().strip()
-    except Exception:
-        pass
-    return None
-
-
 def _make_payload() -> dict:
     rid = _ensure_instance_id()
     payload = {
@@ -153,17 +141,28 @@ def _make_payload() -> dict:
     return payload
 
 
-def _post_sync(url: str, data: bytes, timeout: float = 2.0) -> None:
-    req = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
-    )
+def _post_sync(url: str, data: bytes, timeout: float = 2.0) -> bool:
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": f"{_PROJECT_NAME}/telemetry",
+    }
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             _ = resp.status
-    except urllib.error.URLError:
-        return
-    except Exception:
-        return
+            return True
+    except urllib.error.URLError as e:
+        try:
+            _log.warning("[telemetry] POST failed (url=%s): %s", url, e)
+        except Exception:
+            pass
+        return False
+    except Exception as e:
+        try:
+            _log.warning("[telemetry] POST failed (url=%s): %s", url, e)
+        except Exception:
+            pass
+        return False
 
 
 async def maybe_send_telemetry_async() -> None:
@@ -291,6 +290,16 @@ def maybe_send_telemetry_background() -> None:
                 asyncio.ensure_future(_periodic_ping_loop())
             except Exception:
                 # If scheduling fails, don't prevent the immediate send
+                pass
+        else:
+            # No running loop yet; perform a synchronous send now
+            try:
+                _log.debug("telemetry loop not running; sending synchronously")
+            except Exception:
+                pass
+            try:
+                _post_sync(_get_endpoint(), json.dumps(_make_payload()).encode("utf-8"))
+            except Exception:
                 pass
     except Exception:
         try:
