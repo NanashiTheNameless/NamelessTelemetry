@@ -1,4 +1,4 @@
-# Nameless Nanashi Code License (NNCL) v1.3
+# Nameless Nanashi Code License (NNCL) v1.4
 
 **Copyright © 2025 [NamelessNanashi](<https://git.NamelessNanashi.dev/>)**
 
@@ -17,7 +17,7 @@ This license lets people use, study, share, and modify the Work under firm ethic
 - **Adaptation**: Any modification, derivative, translation, aggregation with, or inclusion of the Work into another work, including as a library or component.
 - **Share**: To provide the Work or Adaptations to any third party, by any means, including download, hosting, software-as-a-service (SaaS), APIs, containers, or device preinstallation.
 - **Non-Commercial**: Not primarily intended for or directed toward commercial advantage or monetary compensation of any kind. This includes (without limitation) direct sales, subscriptions, SaaS fees, paid support, training, consulting, advertising, sponsorship, affiliate links, data monetization, bundling tied to a paid product/service, and any internal deployment primarily supporting revenue-generating activity.
-- **Non-Rewarded Donation**: A voluntary monetary contribution that provides **no goods, services, access, features, priority, advertising, sponsorship, acknowledgments of a promotional nature, or any other consideration** to the donor. Neutral, non-promotional listing of donor names (without logos, non-profile links, or prominence) is not a “reward.”
+- **Non-Rewarded Donation**: A voluntary monetary contribution that provides **no goods, services, access, features, priority, advertising, sponsorship, acknowledgments of a promotional nature, or any other consideration** to the donor. Neutral, non-promotional listing of donor names (without logos, non-profile links, or prominence) is not a "reward."
 - **Policy**: The ethical standards and prohibitions in Section 4 and the attribution/notice duties in Section 3.
 
 ---
@@ -34,7 +34,7 @@ When You Share the Work or any Adaptation, You must:
 
 1. **Attribution**: Give appropriate credit to the Licensor, include the project name, and provide a copy of this license (or a clickable link if the medium allows).
 2. **Change Notice**: State the changes You made and the date of those changes.
-3. **Source Availability**: If You Share an Adaptation in executable or compiled form, You must **concurrently** make the complete corresponding source available under this license, including build instructions and any “installation information” needed to install and run the modified software on user devices (if applicable).
+3. **Source Availability**: If You Share an Adaptation in executable or compiled form, You must **concurrently** make the complete corresponding source available under this license, including build instructions and any "installation information" needed to install and run the modified software on user devices (if applicable).
 4. **Policy Propagation**: You must reproduce **this exact license text** (including Section 4 Policy) in full with the Work and any Adaptation. You may not substitute or add terms that weaken, bypass, or conflict with this license.
 
 ---
@@ -59,12 +59,13 @@ All uses must be Non-Commercial. The following are **not** allowed without a sep
 - Using the Work to train or fine-tune any machine-learning or AI model for commercial use or deployment, or including the Work in datasets intended for any monetized or commercial ML/AI activity.
 
 You may charge **actual, verifiable cost of physical media and postage only**, with no markup or indirect monetization.
+You may accept **Non-Rewarded Donations** as defined in section 1.
 
 ---
 
 ## 6. Strong Share-Alike (Same License)
 
-Any Adaptation You Share must be licensed **only** under this **NNCL v1.3** (or later) license, in full, with the Policy intact. No other license (including dual-licensing by You) may be applied to the Adaptation You Share, and You may not add field-of-use, patent, or other restrictions conflicting with this license.
+Any Adaptation You Share must be licensed **only** under this **NNCL v1.4** (or later) license, in full, with the Policy intact. No other license (including dual-licensing by You) may be applied to the Adaptation You Share, and You may not add field-of-use, patent, or other restrictions conflicting with this license.
 
 **Network use (including providing functionality via network, SaaS, or API) constitutes Sharing** for the purpose of this section and triggers all obligations above (Attribution, Source, Policy, and Same-License).
 
@@ -78,7 +79,7 @@ If You or Your affiliate initiates or maintains a patent suit alleging that the 
 
 ## 8. No Endorsement; No Trademark
 
-This license does not grant permission to use the Licensor’s name, logos, or trademarks. Do not imply endorsement or affiliation.
+This license does not grant permission to use the Licensor's name, logos, or trademarks. Do not imply endorsement or affiliation.
 
 ---
 
@@ -86,25 +87,25 @@ This license does not grant permission to use the Licensor’s name, logos, or t
 
 - **Notice & Cure**: If the Licensor notifies You of a violation, Your license will continue only if You cure the violation within **30 days** of the notice.
 - **Automatic Termination**: Failure to cure within 30 days results in immediate termination.
-- **No Retroactive Permission**: Termination ends all rights granted by this license. Continued use after termination infringes the Licensor’s rights.
+- **No Retroactive Permission**: Termination ends all rights granted by this license. Continued use after termination infringes the Licensor's rights.
 - **Reinstatement**: The Licensor may reinstate the license in writing at their sole discretion.
 
 ---
 
-## 9A. Licensor’s Right to Revoke (For Any Reason or No Reason)
+## 9A. Licensor's Right to Revoke (For Any Reason or No Reason)
 
 1. **Unilateral Revocation**: The Licensor may revoke Your rights under this license, in whole or in part, for any reason or no reason, whether or not You are in breach.
 2. **Notice Requirement and Grace Period**: Revocation becomes effective **7 calendar days** after the earliest of the following notice methods:
    - (a) the Licensor publishing a revocation notice in the repository containing the Work, or on a project website linked from the README;
    - (b) direct written notice (including email) from the Licensor to You; or
    - (c) public notice identifying You or a defined class of users to which You belong.
-3. **Scope**: Revocation may be user-specific, organization-specific, jurisdiction-specific, or project-wide, at the Licensor’s discretion.
+3. **Scope**: Revocation may be user-specific, organization-specific, jurisdiction-specific, or project-wide, at the Licensor's discretion.
 4. **Post-Revocation Obligations**: Upon the effective date of revocation, all rights granted to You under this license cease. You must promptly stop using, running, sharing, or distributing the Work and any Adaptations, and (if applicable) take reasonable steps to remove deployments and distribution points. You may retain a single archival copy solely for compliance, audit, or litigation purposes.
 5. **No Retroactive Effect**: Revocation does not retroactively invalidate or render infringing any use, reproduction, distribution, or adaptation of the Work that occurred prior to the effective revocation date under a valid license.
 6. **No Obligation to Refund**: Revocation creates no obligation on the Licensor to provide support, updates, or refunds (if any were paid under a separate agreement).
 7. **Commercial Licenses**: If You hold a separate written commercial license from the Licensor, this Section 9A does not affect that agreement unless the revocation notice expressly states otherwise.
 8. **Reinstatement**: The Licensor may, at their sole discretion, reinstate Your license rights under this section in writing (including by email or public notice), subject to any conditions the Licensor may impose.
-9. **Survival**: Sections 11–14 survive revocation. Sections 3–6 survive only to the extent necessary to complete the takedown and cessation obligations described above.
+9. **Survival**: Sections 11-14 survive revocation. Sections 3-6 survive only to the extent necessary to complete the takedown and cessation obligations described above.
 
 ---
 
@@ -120,7 +121,7 @@ If You Share the Work or an Adaptation to more than 100 users (internal or exter
 
 ## 11. Warranty Disclaimer
 
-THE WORK IS PROVIDED “AS IS,” WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE. YOU ASSUME ALL RISKS ASSOCIATED WITH USING, MODIFYING, OR SHARING THE WORK.
+THE WORK IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE. YOU ASSUME ALL RISKS ASSOCIATED WITH USING, MODIFYING, OR SHARING THE WORK.
 
 ---
 
@@ -132,7 +133,7 @@ TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT WILL THE LICENSOR BE LIABLE 
 
 ## 13. Severability; No Waiver
 
-If any provision of this license is unenforceable, the remaining provisions remain in effect. The Licensor’s failure to enforce any provision is not a waiver of the right to do so later.
+If any provision of this license is unenforceable, the remaining provisions remain in effect. The Licensor's failure to enforce any provision is not a waiver of the right to do so later.
 
 ---
 

@@ -1,4 +1,4 @@
-# This software is licensed under NNCL v1.3 see LICENSE.md for more info
+# This software is licensed under NNCL v1.4 see LICENSE.md for more info
 # https://github.com/NanashiTheNameless/NamelessTelemetry/blob/main/LICENSE.md
 """Simple, opt-out, privacy-respecting census.
 
