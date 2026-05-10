@@ -329,7 +329,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
 
   const toolbar = `
   <div class="toolbar">
-    <div class="muted">Daily census counts (UTC) • <span class="badge">${rangeLabel(daysToShow)}</span></div>
+    <div class="muted">Daily project census counts (UTC) • <span class="badge">${rangeLabel(daysToShow)}</span></div>
     <div>
       <label for="project-filter" class="muted" style="margin-right:6px">Project</label>
       <select id="project-filter" class="select">
