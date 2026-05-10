@@ -244,7 +244,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
   const projects = Object.keys(stats.projects).sort()
   const siteTitle = 'NamelessTelemetry'
   const siteTitleDefaultSuffix = ' - Total census'
-  const defaultDescription = 'Daily self-host census counts for Nanashi\'s self-hosted projects. Public dashboard and API.'
+  const defaultDescription = 'Daily census counts for Nanashi\'s projects. Public dashboard and API.'
   // Build page-specific title/description
   const pageTitle = selectedProject ? `${selectedProject} — ${siteTitle}` : `${siteTitle}${siteTitleDefaultSuffix}`
   const pageDescription = selectedProject ? `Daily counts for ${selectedProject} on ${siteTitle}.` : defaultDescription
@@ -329,7 +329,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
 
   const toolbar = `
   <div class="toolbar">
-    <div class="muted">Daily self-host census counts (UTC) • <span class="badge">${rangeLabel(daysToShow)}</span></div>
+    <div class="muted">Daily census counts (UTC) • <span class="badge">${rangeLabel(daysToShow)}</span></div>
     <div>
       <label for="project-filter" class="muted" style="margin-right:6px">Project</label>
       <select id="project-filter" class="select">
