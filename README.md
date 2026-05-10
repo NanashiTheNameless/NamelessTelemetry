@@ -16,7 +16,7 @@ NamelessTelemetry is a minimalist, privacy-first telemetry service that records 
 
 ## Domains
 
-- Dashboard is available at: <https://telemetry.namelessnanashi.dev/> and <https://census.namelessnanashi.dev/>
+- Dashboard is available at: <https://telemetry.namelessnanashi.dev/> (and <https://census.namelessnanashi.dev/>)
 
 ## License & Credits
 
