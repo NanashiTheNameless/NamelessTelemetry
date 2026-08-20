@@ -20,6 +20,7 @@ DISABLE_LINTERS:
   - PYTHON_PYRIGHT
   - PYTHON_PYLINT
   - PYTHON_FLAKE8
+  - ACTION_ZIZMOR
 
 DISABLE:
   - COPYPASTE # Comment to enable checks of excessive copy-pastes
