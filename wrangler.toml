@@ -1,4 +1,4 @@
-# This software is licensed under NNCL v1.4 see LICENSE.md for more info
+# This software is licensed under NNCL v1.5 see LICENSE.md for more info
 name = "nameless-telemetry"
 main = "worker.js"
 compatibility_date = "2026-01-20"
