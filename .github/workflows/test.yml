@@ -1,0 +1,28 @@
+# Runs the dependency-free worker tests (node:test, uses the runner's preinstalled Node)
+---
+name: Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - gh-pages
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Worker tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493
+        with:
+          persist-credentials: false
+
+      - name: Run tests
+        run: node --test test/worker.test.mjs

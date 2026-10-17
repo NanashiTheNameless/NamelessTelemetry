@@ -19,3 +19,13 @@ enabled = false
 
 [placement]
 mode = "smart"
+
+# Per-IP rate limit for POST /census (Workers Rate Limiting; period must be 10 or 60 seconds).
+# 60/min stops floods while leaving room for many installs behind one shared IP (NAT, CGNAT, CI).
+[[ratelimits]]
+name = "CENSUS_RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60

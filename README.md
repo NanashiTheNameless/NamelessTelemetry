@@ -9,10 +9,14 @@ NamelessTelemetry is a minimalist, privacy-first telemetry service that records 
 - No personal data: hashed IDs are used solely for dedupe.
 - Responsive chart UI with timeframe selection (7 days to 1 year).
 
+## Usage
+
+See [USAGE.md](<./USAGE.md>) for how to report from a project, query the data, and self-host.
+
 ## Data lifecycle
 
 - `seen:` entries expire after ~10 days (dedupe markers).
-- `counts:` entries automatically expire a little over one year after their day; a daily background sweep also removes legacy data older than one year.
+- `counts:` entries automatically expire a little over one year after their day. A daily background pass (after 01:00 UTC) removes data older than one year and recounts the last 3 finished days from the dedupe markers to correct any lost or doubled increments.
 
 ## Domains
 

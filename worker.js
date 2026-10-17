@@ -1,32 +1,26 @@
 // This software is licensed under NNCL v1.5 see LICENSE.md for more info
 // https://github.com/NanashiTheNameless/NamelessTelemetry/blob/main/LICENSE.md
 // NamelessTelemetry Cloudflare Worker
-// - POST /census: accept minimal JSON payload from clients
-//   { id: sha256, date: YYYY-MM-DD, projectname|project: string }
-//   Deduplicate per (date, project, id) and increment a per-day counter.
+// - POST /census: accept minimal JSON payload from clients (rate limited per IP)
+//   { id: sha256, projectname|project: string } (or X-Project-Name header; client date is ignored)
+//   Deduplicate per (UTC day, project, id) and increment a per-day counter.
 // - GET /: serve a simple index HTML with recent counts per project.
 // - GET /api/stats: return JSON summary for recent days.
+// - Daily maintenance (after 01:00 UTC): prune counts older than a year, recount recent days.
 
 const DAYS_TO_SHOW = 7 // default if no range provided
+const SEEN_TTL_SECONDS = 10 * 24 * 60 * 60 // dedupe markers kept ~10 days
+const RECOUNT_DAYS = 3 // finished days to recount from seen: keys during daily maintenance
+// UTC day this isolate last saw maintenance done; skips the KV marker read on later requests.
+// Per-isolate only, so a fresh isolate reads the marker once.
+let maintenanceDoneFor = ''
+const STATS_CACHE_SECONDS = 120 // dashboard and /api/stats edge-cache lifetime
 // Projects to ignore entirely (case-insensitive)
 const PROJECT_DENYLIST = new Set(
   [
     'Project',
     'ExampleProject',
     '<PROJECT_NAME>'
-  ].map((s) => String(s).toLowerCase())
-)
-
-// User-agents that should not receive image previews (omit og:image entirely).
-// Match is substring, case-insensitive. Add entries as needed.
-const NO_IMAGE_UA_SET = new Set(
-  [
-    'discordbot', // Discord
-    'facebookexternalhit', // Facebook
-    // 'slackbot', // Slack
-    // 'linkedinbot', // LinkedIn
-    // 'telegrambot', // Telegram
-    'twitterbot' // Twitter/X
   ].map((s) => String(s).toLowerCase())
 )
 
@@ -43,6 +37,10 @@ export default {
   async fetch (request, env, ctx) {
     const url = new URL(request.url)
     try {
+      // Check the rate limit before any KV work so floods can't burn KV quota
+      if (request.method === 'POST' && url.pathname === '/census' && !(await withinRateLimit(request, env))) {
+        return new Response('Too Many Requests', { status: 429, headers: { ...corsHeaders(), 'retry-after': '60' } })
+      }
       // Best-effort background cleanup of old count keys (runs at most once per day)
       if (env && env.TELEMETRY && ctx && typeof ctx.waitUntil === 'function') {
         ctx.waitUntil(maybeCleanupOldCounts(env))
@@ -53,52 +51,17 @@ export default {
       if (request.method === 'GET' && url.pathname === '/api/stats') {
         const projectFilter = url.searchParams.get('project') || undefined
         const days = parseRangeDays(url.searchParams)
-        const json = await buildStats(env, projectFilter, days)
-        return jsonResponse(json)
+        return await cached(request, ctx, { project: projectFilter || '', days }, async () => jsonResponse(await buildStats(env, projectFilter, days)))
       }
       if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
         const projectFilter = url.searchParams.get('project') || undefined
         const days = parseRangeDays(url.searchParams)
-        const daysForData = days
-        const json = await buildStats(env, projectFilter, daysForData)
-        const ua = (request.headers.get('user-agent') || '')
-        const uaLc = ua.toLowerCase()
-        const omitOgImage = Array.from(NO_IMAGE_UA_SET).some(sig => uaLc.includes(sig))
-        return new Response(renderHtml(json, projectFilter, days, url.origin + url.pathname, { omitOgImage }), {
-          status: 200,
-          headers: { 'content-type': 'text/html; charset=utf-8', Vary: 'User-Agent' }
-        })
-      }
-      // Open Graph image endpoints
-      if (request.method === 'GET' && url.pathname === '/og.svg') {
-        // Explicit .svg path always serves SVG
-        const projectFilter = url.searchParams.get('project') || undefined
-        const days = parseRangeDays(url.searchParams)
-        const json = await buildStats(env, projectFilter, days)
-        const svg = renderOgSvg(json, projectFilter, days)
-        return new Response(svg, {
-          status: 200,
-          headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300' }
-        })
-      }
-      if (request.method === 'GET' && url.pathname === '/og') {
-        // Content negotiation: serve SVG for explicit or permissive Accept headers.
-        const accept = (request.headers.get('accept') || '').toLowerCase().trim()
-        const acceptsSvg = /(^|,|\s)image\/svg\+xml(\s*;|\s|,|$)/.test(accept)
-        const acceptsWildcard = accept === '' || accept === '*/*' || /(^|,|\s)\*\/\*(\s*;|\s|,|$)/.test(accept) || /(^|,|\s)image\/\*(\s*;|\s|,|$)/.test(accept)
-        if (!(acceptsSvg || acceptsWildcard)) {
-          return new Response(null, {
-            status: 204,
-            headers: { 'cache-control': 'public, max-age=300', Vary: 'Accept' }
+        return await cached(request, ctx, { project: projectFilter || '', days }, async () => {
+          const json = await buildStats(env, projectFilter, days)
+          return new Response(renderHtml(json, projectFilter, days, url.origin + url.pathname), {
+            status: 200,
+            headers: { 'content-type': 'text/html; charset=utf-8' }
           })
-        }
-        const projectFilter = url.searchParams.get('project') || undefined
-        const days = parseRangeDays(url.searchParams)
-        const json = await buildStats(env, projectFilter, days)
-        const svg = renderOgSvg(json, projectFilter, days)
-        return new Response(svg, {
-          status: 200,
-          headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=300', Vary: 'Accept' }
         })
       }
       if (request.method === 'OPTIONS') {
@@ -111,11 +74,47 @@ export default {
   }
 }
 
+// Serve GET responses from the edge cache when possible, so repeat views cost no KV list calls.
+// The cache key is rebuilt from the parsed parameters, so extra or random query strings can't bypass it.
+async function cached (request, ctx, params, build) {
+  const cache = globalThis.caches && globalThis.caches.default
+  const keyUrl = new URL(request.url)
+  keyUrl.search = new URLSearchParams(params).toString()
+  const key = new Request(keyUrl.toString(), { method: 'GET' })
+  if (cache) {
+    const hit = await cache.match(key)
+    if (hit) return hit
+  }
+  const res = await build()
+  res.headers.set('cache-control', `public, max-age=${STATS_CACHE_SECONDS}`)
+  if (cache && res.status === 200) {
+    const put = cache.put(key, res.clone())
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(put); else await put
+  }
+  return res
+}
+
 function corsHeaders () {
   return {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-headers': 'content-type'
+    'access-control-allow-headers': 'content-type, x-project-name'
+  }
+}
+
+// Per-IP limit on POST /census via the Workers Rate Limiting binding configured in wrangler.toml.
+// The IP is only handed to Cloudflare's in-memory limiter and is never stored.
+// Without the binding (tests, self-hosts that skip it) requests are not limited.
+async function withinRateLimit (request, env) {
+  const limiter = env && env.CENSUS_RATE_LIMITER
+  if (!limiter || typeof limiter.limit !== 'function') return true
+  const ip = request.headers.get('cf-connecting-ip')
+  if (!ip) return true
+  try {
+    const { success } = await limiter.limit({ key: ip })
+    return success
+  } catch {
+    return true // fail open; a limiter outage shouldn't drop real pings
   }
 }
 
@@ -166,24 +165,16 @@ async function handleCensus (request, env) {
 
   const seenKey = `seen:${date}:${project}:${id}`
   const countKey = `counts:${date}:${project}`
-  // Set absolute expiration for the count key to auto-delete after ~1 year
-  let countExpiration
-  try {
-    const [yy, mm, dd] = date.split('-').map((x) => parseInt(x, 10))
-    // Expire the count a little over a year after the UTC day begins (366 days for leap-year safety)
-    countExpiration = Math.floor(Date.UTC(yy, (mm || 1) - 1, dd || 1) / 1000) + 366 * 24 * 60 * 60
-  } catch {
-    countExpiration = undefined
-  }
 
   try {
     const seen = await env.TELEMETRY.get(seenKey)
     if (!seen) {
       // Mark as seen with a TTL to prevent unbounded growth (keep ~10 days)
-      await env.TELEMETRY.put(seenKey, '1', { expirationTtl: 10 * 24 * 60 * 60 })
+      await env.TELEMETRY.put(seenKey, '1', { expirationTtl: SEEN_TTL_SECONDS })
+      // KV has no atomic increment, so concurrent pings can lose an update here.
+      // The daily maintenance pass recounts recent days from seen: keys to repair that.
       const current = parseInt((await env.TELEMETRY.get(countKey)) || '0', 10) || 0
-      const putOpts = countExpiration ? { expiration: countExpiration } : undefined
-      await env.TELEMETRY.put(countKey, String(current + 1), putOpts)
+      await putCount(env, date, project, current + 1)
     }
   } catch (e) {
     // Ignore storage errors; keep endpoint resilient
@@ -208,19 +199,23 @@ async function buildStats (env, projectFilter, daysToShow = DAYS_TO_SHOW) {
   days.reverse()
   out.days = days
 
-  // List all counts and filter to the time window
+  // List counts under the longest date prefix shared by the window (e.g. 'counts:2026-10-1'),
+  // then filter to the exact days. KV list only supports prefixes, not ranges.
+  const daySet = new Set(days)
   let cursor
   do {
-    const listing = await env.TELEMETRY.list({ prefix: 'counts:', cursor })
+    const listing = await env.TELEMETRY.list({ prefix: 'counts:' + commonPrefix(days[0], days[days.length - 1]), cursor })
     for (const key of listing.keys || []) {
       const parts = key.name.split(':') // ['counts', YYYY-MM-DD, project]
       if (parts.length < 3) continue
       const date = parts[1]
       const project = parts.slice(2).join(':')
       if (PROJECT_DENYLIST.has(project.toLowerCase())) continue
-      if (!days.includes(date)) continue
+      if (!daySet.has(date)) continue
       if (projectFilter && project !== projectFilter) continue
-      const val = parseInt((await env.TELEMETRY.get(key.name)) || '0', 10) || 0
+      // Counts are mirrored into key metadata so listing avoids a get per key; older keys lack it
+      const meta = key.metadata && Number.isFinite(key.metadata.count) ? key.metadata.count : undefined
+      const val = meta !== undefined ? meta : (parseInt((await env.TELEMETRY.get(key.name)) || '0', 10) || 0)
       if (!out.projects[project]) out.projects[project] = {}
       out.projects[project][date] = val
       out.totals[date] = (out.totals[date] || 0) + val
@@ -231,6 +226,30 @@ async function buildStats (env, projectFilter, daysToShow = DAYS_TO_SHOW) {
   return out
 }
 
+function commonPrefix (a, b) {
+  let i = 0
+  while (i < a.length && i < b.length && a[i] === b[i]) i++
+  return a.slice(0, i)
+}
+
+function countExpiration (date) {
+  // Expire the count a little over a year after the UTC day begins (366 days for leap-year safety)
+  const [yy, mm, dd] = date.split('-').map((x) => parseInt(x, 10))
+  const exp = Math.floor(Date.UTC(yy, (mm || 1) - 1, dd || 1) / 1000) + 366 * 24 * 60 * 60
+  return Number.isFinite(exp) ? exp : undefined
+}
+
+async function putCount (env, date, project, count) {
+  const opts = { metadata: { count } }
+  const exp = countExpiration(date)
+  // KV rejects expirations less than 60s in the future; skip writing counts that are already due to expire
+  if (exp !== undefined) {
+    if (exp <= Math.floor(Date.now() / 1000) + 60) return
+    opts.expiration = exp
+  }
+  await env.TELEMETRY.put(`counts:${date}:${project}`, String(count), opts)
+}
+
 function jsonResponse (obj) {
   return new Response(JSON.stringify(obj), {
     status: 200,
@@ -238,8 +257,7 @@ function jsonResponse (obj) {
   })
 }
 
-function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
-  const options = opts || {}
+function renderHtml (stats, selectedProject, daysToShow, baseUrl) {
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
   const projects = Object.keys(stats.projects).sort()
   const siteTitle = 'NamelessTelemetry'
@@ -263,18 +281,6 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
   } catch (e) {
     canonical = baseUrl || ''
   }
-  // Build dynamic OG image URL using content negotiation endpoint
-  let ogImageUrl = ''
-  try {
-    if (canonical) {
-      const img = new URL(canonical)
-      img.pathname = '/og'
-      ogImageUrl = img.toString()
-    }
-  } catch {}
-  if (options.omitOgImage) {
-    ogImageUrl = ''
-  }
   const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
   const colorList = (n) => { const base = [210, 280, 150, 20, 330, 100, 260, 40, 0, 180]; const out = []; for (let i = 0; i < n; i++) { const hue = base[i % base.length] + (Math.floor(i / base.length) * 30); out.push('hsl(' + hue + ', 70%, 60%)') } return out }
 
@@ -291,13 +297,7 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
   <meta property="og:title" content="${esc(pageTitle)}"/>
   <meta property="og:description" content="${esc(pageDescription)}"/>
   ${canonical ? `<meta property="og:url" content="${esc(canonical)}"/>` : ''}
-  ${ogImageUrl ? `<meta property="og:image" content="${esc(ogImageUrl)}"/>` : ''}
-  ${ogImageUrl ? `<meta property="og:image:alt" content="${esc(selectedProject ? ('Daily counts for ' + selectedProject) : 'Daily totals across projects')}"/>` : ''}
-  ${ogImageUrl
-? `<meta property="og:image:width" content="1200"/>
-  <meta property="og:image:height" content="630"/>`
-: ''}
-  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:card" content="summary"/>
   <meta name="twitter:title" content="${esc(pageTitle)}"/>
   <meta name="twitter:description" content="${esc(pageDescription)}"/>
   <style>
@@ -593,117 +593,17 @@ function renderHtml (stats, selectedProject, daysToShow, baseUrl, opts) {
   return head + bodyOpen + intro + bodyClose + foot
 }
 
-// Render a simple SVG line chart for social previews (1200x630)
-function renderOgSvg (stats, selectedProject, daysToShow) {
-  const W = 1200
-  const H = 630
-  const pad = { l: 90, r: 40, t: 120, b: 80 }
-  const CW = W - pad.l - pad.r
-  const CH = H - pad.t - pad.b
-  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
-  const siteTitle = 'NamelessTelemetry'
-  const title = selectedProject ? `${selectedProject}` : `${siteTitle} — Total`
-  const rangeLabel = (d) => d >= 365 ? '1 year' : d >= 180 ? '6 months' : d >= 90 ? '3 months' : d >= 30 ? '30 days' : '7 days'
-
-  const days = stats.days || []
-  // Build values for selected project or total
-  let values = []
-  if (selectedProject && stats.projects && stats.projects[selectedProject]) {
-    values = days.map((d) => stats.projects[selectedProject][d] || 0)
-  } else {
-    values = days.map((d) => (stats.totals && stats.totals[d]) || 0)
-  }
-
-  const maxValRaw = values.length ? Math.max.apply(null, values) : 0
-  function niceStepFor (max, desired) {
-    if (!isFinite(max) || max <= 0) return 1
-    const raw = (max * 1.1) / desired
-    const pow = Math.pow(10, Math.floor(Math.log10(raw)))
-    const base = raw / pow
-    let niceBase
-    if (base <= 1) niceBase = 1
-    else if (base <= 2) niceBase = 2
-    else if (base <= 5) niceBase = 5
-    else niceBase = 10
-    const step = niceBase * pow
-    return Math.max(1, Math.ceil(step))
-  }
-
-  const desiredTicks = 6
-  let yStep, yMax, tickCount
-  if (!isFinite(maxValRaw) || maxValRaw <= 0) {
-    tickCount = 4
-    yMax = 4
-    yStep = 1
-  } else {
-    yStep = niceStepFor(maxValRaw, desiredTicks)
-    tickCount = Math.max(1, Math.ceil((maxValRaw * 1.1) / yStep))
-    yMax = yStep * tickCount
-  }
-
-  function xPos (i) { return values.length <= 1 ? (pad.l + CW / 2) : pad.l + (i / (values.length - 1)) * CW }
-  function yPos (v) { return pad.t + (CH - (v / (yMax || 1)) * CH) }
-
-  // Build polyline points
-  const pts = values.map((v, i) => `${Math.round(xPos(i))},${Math.round(yPos(v))}`).join(' ')
-
-  // X labels (sparse: first, middle, last)
-  const xLabels = []
-  if (days.length) {
-    xLabels.push({ x: pad.l, text: days[0], anchor: 'start' })
-    if (days.length > 2) xLabels.push({ x: pad.l + CW / 2, text: days[Math.floor(days.length / 2)], anchor: 'middle' })
-    xLabels.push({ x: pad.l + CW, text: days[days.length - 1], anchor: 'end' })
-  }
-
-  // Y grid and labels
-  const yTicks = []
-  for (let i = 0; i <= tickCount; i++) {
-    const val = yStep * i
-    const y = yPos(val)
-    yTicks.push({ y, val })
-  }
-
-  const lineColor = 'hsl(210, 70%, 60%)'
-  const gridColor = '#1f2937'
-  const textColor = '#e5e7eb'
-  const muted = '#9ca3af'
-  const bg = '#0b0f14'
-  const panel = '#0f172a'
-  const border = '#1f2937'
-
-  const desc = selectedProject
-    ? `Daily counts for ${selectedProject} over ${rangeLabel(daysToShow)}. Max ${maxValRaw}.`
-    : `Daily totals over ${rangeLabel(daysToShow)}. Max ${maxValRaw}.`
-
-  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
-`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img">\n` +
-`  <title>${esc(title)}</title>\n` +
-`  <desc>${esc(desc)}</desc>\n` +
-`  <rect x="0" y="0" width="${W}" height="${H}" fill="${bg}"/>\n` +
-'  <g>\n' +
-`    <rect x="${pad.l - 12}" y="${pad.t - 12}" width="${CW + 24}" height="${CH + 24}" rx="14" fill="${panel}" stroke="${border}"/>\n` +
-`    <g stroke="${gridColor}" stroke-width="1">\n` +
-       yTicks.map(t => `      <line x1="${pad.l}" y1="${Math.round(t.y)}" x2="${pad.l + CW}" y2="${Math.round(t.y)}"/>`).join('\n') + '\n' +
-'    </g>\n' +
-`    <g fill="${muted}" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="20">\n` +
-       yTicks.map(t => `      <text x="${pad.l - 14}" y="${Math.round(t.y) + 6}" text-anchor="end">${Math.round(t.val)}</text>`).join('\n') + '\n' +
-'    </g>\n' +
-`    <polyline fill="none" stroke="${lineColor}" stroke-width="4" points="${pts}"/>\n` +
-'  </g>\n' +
-`  <g fill="${textColor}" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">\n` +
-`    <text x="${pad.l}" y="72" font-size="40" font-weight="700">${esc(title)}</text>\n` +
-`    <text x="${pad.l}" y="102" font-size="22" fill="${muted}">${esc(rangeLabel(daysToShow))}</text>\n` +
-     (xLabels.length ? (`    <g fill="${muted}" font-size="20">\n` + xLabels.map(l => `      <text x="${Math.round(l.x)}" y="${pad.t + CH + 40}" text-anchor="${l.anchor}">${esc(l.text)}</text>`).join('\n') + '\n    </g>\n') : '') +
-'  </g>\n' +
-'</svg>'
-}
-
 // Background maintenance: delete any count keys older than 1 year
 async function maybeCleanupOldCounts (env) {
   try {
     const markerKey = 'maintenance:lastCleanupAt'
-    const today = new Date().toISOString().slice(0, 10) // UTC date string
+    const now = new Date()
+    // Wait until 01:00 UTC so late pings from the previous day are visible in KV listings before recounting
+    if (now.getUTCHours() < 1) return
+    const today = now.toISOString().slice(0, 10) // UTC date string
+    if (maintenanceDoneFor === today) return
     const last = await env.TELEMETRY.get(markerKey)
+    maintenanceDoneFor = today
     if (last === today) return // already ran today
     await env.TELEMETRY.put(markerKey, today, { expirationTtl: 3 * 24 * 60 * 60 })
 
@@ -728,4 +628,46 @@ async function maybeCleanupOldCounts (env) {
   } catch {
     // ignore maintenance errors
   }
+  // Recount recently finished days from their seen: keys to repair lost or doubled increments
+  for (let i = 1; i <= RECOUNT_DAYS; i++) {
+    const d = new Date()
+    d.setUTCDate(d.getUTCDate() - i)
+    try {
+      await recountDay(env, d.toISOString().slice(0, 10))
+    } catch {
+      // ignore maintenance errors
+    }
+  }
+}
+
+async function recountDay (env, date) {
+  const tally = {} // { [project]: uniqueIds }
+  let cursor
+  do {
+    const listing = await env.TELEMETRY.list({ prefix: `seen:${date}:`, cursor })
+    for (const key of (listing.keys || [])) {
+      const parts = key.name.split(':') // ['seen', YYYY-MM-DD, project, id]
+      if (parts.length < 4) continue
+      const project = parts.slice(2, -1).join(':')
+      tally[project] = (tally[project] || 0) + 1
+    }
+    cursor = listing.cursor
+  } while (cursor)
+
+  const stored = {} // { [project]: count }
+  cursor = undefined
+  do {
+    const listing = await env.TELEMETRY.list({ prefix: `counts:${date}:`, cursor })
+    for (const key of (listing.keys || [])) {
+      const project = key.name.split(':').slice(2).join(':')
+      stored[project] = key.metadata && Number.isFinite(key.metadata.count) ? key.metadata.count : undefined
+    }
+    cursor = listing.cursor
+  } while (cursor)
+
+  // Only write when the stored value differs (or lacks metadata) to keep KV writes low
+  const writes = Object.entries(tally)
+    .filter(([project, n]) => stored[project] !== n)
+    .map(([project, n]) => putCount(env, date, project, n))
+  await Promise.all(writes)
 }
