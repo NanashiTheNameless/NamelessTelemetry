@@ -14,7 +14,7 @@ Send a `POST` to `/census` with a small JSON body. Hosted endpoint: `https://tel
 ```
 
 | Field                   | Required | Notes                                                                                                   |
-| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+|-------------------------|----------|---------------------------------------------------------------------------------------------------------|
 | `id`                    | yes      | SHA-256 hex (64 chars). Used only for per-day dedupe. Any other format is accepted but **not counted**. |
 | `project`/`projectname` | yes      | Project name, trimmed, max 100 chars. Can also be sent via the `X-Project-Name` header (header wins).   |
 | `date`, `count`         | no       | Ignored. The server always uses the current UTC day and counts each `id` once per day.                  |
@@ -22,7 +22,7 @@ Send a `POST` to `/census` with a small JSON body. Hosted endpoint: `https://tel
 Responses:
 
 | Status | When                                                                                                          |
-| ------ | ------------------------------------------------------------------------------------------------------------- |
+|--------|---------------------------------------------------------------------------------------------------------------|
 | `204`  | Any valid JSON body, whether it was counted or dropped, so clients can't probe what's stored.                 |
 | `400`  | Body is not valid JSON.                                                                                       |
 | `429`  | Over the per-IP rate limit (60 requests/minute). Has `Retry-After: 60`. Drop the ping; don't retry in a loop. |
@@ -100,7 +100,7 @@ Requires a Cloudflare account and [Wrangler](<https://developers.cloudflare.com/
 ### Storage layout (KV)
 
 | Key                          | Value                                    | Expiry                  |
-| ---------------------------- | ---------------------------------------- | ----------------------- |
+|------------------------------|------------------------------------------|-------------------------|
 | `seen:<date>:<project>:<id>` | `1`                                      | 10 days                 |
 | `counts:<date>:<project>`    | daily count (also in metadata `{count}`) | ~366 days after the day |
 | `maintenance:lastCleanupAt`  | UTC date                                 | 3 days                  |
